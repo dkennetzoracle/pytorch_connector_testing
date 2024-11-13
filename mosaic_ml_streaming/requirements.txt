@@ -1,2 +1,4 @@
 mosaicml-streaming==0.9.1
 transformers==4.46.2
+datasets==3.1.0
+oci==2.138.1

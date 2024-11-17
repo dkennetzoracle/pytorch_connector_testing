@@ -9,6 +9,7 @@ import oci
 from oci.object_storage import ObjectStorageClient
 from oci.object_storage.models import CreateBucketDetails
 from streaming import MDSWriter
+from lightning import Trainer
 
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
@@ -22,6 +23,7 @@ def parse_args():
                         help="Dataset to pull from huggingface.")
     parser.add_argument("--dataset-subname", default="narrative_qa",
                         help="The sub-dataset in tau/scrolls. Not all datasets have this")
+    parser.add_argument("--streaming", action="store_true", help="Stream large datasets, rather than pull all")
     parser.add_argument("--mds-output-bucket", required=True,
                         help="Remote OCI output bucket to write reformatted MDS data to.")
     parser.add_argument("--compartment-id", required=True,
@@ -68,7 +70,8 @@ def main():
         name=args.dataset_subname,
         trust_remote_code=True,
         split="train",
-        cache_dir=args.dataset_path
+        cache_dir=args.dataset_path,
+        streaming=args.streaming
     )
 
     dtype_mapping = {"string": "str"}
@@ -89,6 +92,8 @@ def main():
             writer.write(item)
 
     print(f"Successfully wrote mds output to {remote_bucket}")
+
+    
 
 if __name__ == "__main__":
     sys.exit(main())

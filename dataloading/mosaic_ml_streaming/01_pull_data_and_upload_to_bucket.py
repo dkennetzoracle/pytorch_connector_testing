@@ -24,6 +24,8 @@ def parse_args():
     parser.add_argument("--dataset-subname", default="narrative_qa",
                         help="The sub-dataset in tau/scrolls. Not all datasets have this")
     parser.add_argument("--streaming", action="store_true", help="Stream large datasets, rather than pull all")
+    parser.add_argument("--compress-data", action="store_true",
+                        help="Compress optimized data in storage")
     parser.add_argument("--mds-output-bucket", required=True,
                         help="Remote OCI output bucket to write reformatted MDS data to.")
     parser.add_argument("--compartment-id", required=True,
@@ -87,7 +89,8 @@ def main():
                                 namespace=namespace,
                                 oci_compartment_id=args.compartment_id)
     remote_bucket = f'oci://{args.mds_output_bucket}@{namespace}/'
-    with MDSWriter(out=remote_bucket, columns=columns) as writer:
+    compression = 'zstd' if args.compress_data else None
+    with MDSWriter(out=remote_bucket, columns=columns, compression=compression) as writer:
         for item in data:
             writer.write(item)
 

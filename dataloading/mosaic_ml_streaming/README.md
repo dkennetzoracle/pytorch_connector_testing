@@ -9,8 +9,8 @@ It also natively supports multi-cloud, specifically listing OCI as compatible.
 2. Pull data from hf and convert to optimized + compressed format while sending to bucket (automated conversion) - measure size and object count compressed 
 3. Convert a local dataset to optimized and write to bucket (less automated) - measure size and object count uncompressed
 4. Convert a local dataset to optimized + compressed and write to bucket (less automated) - measure size and object count compressed
-5. Stream dataset from object storage into fine-tuning - measure test metrics uncompressed
-6. Stream dataset from object storage into fine-tuning - measure test metrics compressed
+5. Stream dataset from object storage into fine-tuning - measure test metrics uncompressed - write to local storage
+6. Stream dataset from object storage into fine-tuning - measure test metrics compressed - write to local storage
 
 
 

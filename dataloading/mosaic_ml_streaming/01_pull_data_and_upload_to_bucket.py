@@ -22,7 +22,7 @@ def parse_args():
                         help="Dataset to pull from huggingface.")
     parser.add_argument("--dataset-subname", default="narrative_qa",
                         help="The sub-dataset in tau/scrolls. Not all datasets have this")
-    parser.add_argument("--streaming", action="store_true", help="Stream large datasets, rather than pull all")
+    parser.add_argument("--stream", action="store_true", help="Stream large datasets, rather than pull all")
     parser.add_argument("--compress-data", action="store_true",
                         help="Compress optimized data in storage")
     parser.add_argument("--mds-output-bucket", required=True,
@@ -74,7 +74,7 @@ def main():
         trust_remote_code=True,
         split="train",
         cache_dir=args.dataset_path,
-        streaming=args.streaming
+        streaming=args.stream
     )
 
     dtype_mapping = {"string": "str"}
@@ -94,7 +94,7 @@ def main():
     compression = 'zstd' if args.compress_data else None
     with MDSWriter(out=remote_bucket, columns=columns,
                    compression=compression,
-                   max_workers=args.max_threads,
+                   max_workers=args.max_workers,
                    ) as writer:
         for item in data:
             writer.write(item)

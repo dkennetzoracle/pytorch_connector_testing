@@ -9,7 +9,6 @@ import oci
 from oci.object_storage import ObjectStorageClient
 from oci.object_storage.models import CreateBucketDetails
 from streaming import MDSWriter
-from lightning import Trainer
 
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
@@ -30,6 +29,8 @@ def parse_args():
                         help="Remote OCI output bucket to write reformatted MDS data to.")
     parser.add_argument("--compartment-id", required=True,
                         help="The compartment ID in OCI in which to create the bucket")
+    parser.add_argument("--max-workers", type=int, default=1,
+                        help="Max workers to use for file uploading to object storage.")
     return parser.parse_args()
 
 def create_bucket_if_not_exists(
@@ -81,6 +82,7 @@ def main():
     for feature_name, feature in data.features.items():
         columns[feature_name] = dtype_mapping[feature.dtype]
 
+    # Fixme - take non-default config and profile.
     config = oci.config.from_file()
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
@@ -90,7 +92,10 @@ def main():
                                 oci_compartment_id=args.compartment_id)
     remote_bucket = f'oci://{args.mds_output_bucket}@{namespace}/'
     compression = 'zstd' if args.compress_data else None
-    with MDSWriter(out=remote_bucket, columns=columns, compression=compression) as writer:
+    with MDSWriter(out=remote_bucket, columns=columns,
+                   compression=compression,
+                   max_workers=args.max_threads,
+                   ) as writer:
         for item in data:
             writer.write(item)
 

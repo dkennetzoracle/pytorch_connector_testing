@@ -1,0 +1,5 @@
+webdataset
+datasets
+huggingface_hub
+torch
+oci

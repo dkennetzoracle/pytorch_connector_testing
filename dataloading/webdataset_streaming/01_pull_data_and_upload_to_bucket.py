@@ -5,7 +5,6 @@ import os
 import webdataset as wds
 from datasets import load_dataset
 from tqdm import tqdm
-from io import BytesIO
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -95,7 +94,7 @@ async def process_and_upload(dataset, shard_pattern, executor, object_storage_cl
                     )
                 )
                 upload_tasks.add(upload_task)
-                if len(upload_tasks) > 10:
+                if len(upload_tasks) > 16:
                     done, upload_tasks = await asyncio.wait(upload_tasks, return_when=asyncio.FIRST_COMPLETED)
                     for task in done:
                         await task
@@ -103,7 +102,7 @@ async def process_and_upload(dataset, shard_pattern, executor, object_storage_cl
 
 
 async def main():
-    executor = ThreadPoolExecutor(max_workers=4)  # Adjust the number of workers as needed
+    executor = ThreadPoolExecutor(max_workers=16)  # Adjust the number of workers as needed
     # Load the C4 dataset from AllenAI
     dataset = load_dataset("allenai/c4", "en", split="train", trust_remote_code=True, cache_dir="/mnt/nvme/datasets/allenai_c4_en", streaming=True)
     compartment_id = "ocid1.compartment.oc1..aaaaaaaa5rwhi5wj3grdiqzvz244gwzycpfl2ctlb4nvl7vi7wu55tqi375a"

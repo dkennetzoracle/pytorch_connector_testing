@@ -4,3 +4,4 @@ datasets==3.1.0
 oci==2.138.1
 litdata == 0.2.30
 lightning==2.4.0
+boto3==1.35.64

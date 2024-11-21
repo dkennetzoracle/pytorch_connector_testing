@@ -1,10 +1,15 @@
 # PyTorch Lightning Streaming
 
-this first:
+Streaming from huggingface for the optimizer is explicitly not supported (https://github.com/Lightning-AI/litdata/issues/64). You will need 300GB of storage for this step, at which point we can optimize a streaming dataset.
 ```
 huggingface-cli download allenai/c4 --include "en/*" --local-dir /mnt/nvme/datasets/allenai/c4_en --max-workers 32 --repo-type dataset
 ```
-this takes 4 minutes.
+this takes 4 minutes on an H100.
+
+Then, with the local dataset, we can perform the optimizer for reading from object storage.
+
+
+
 
 ```
 Access Key: This is the "Access Key" associated with your Customer Secret Key pair. It's provided by Oracle and associated with your Console user login.

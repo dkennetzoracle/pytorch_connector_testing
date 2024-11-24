@@ -1,0 +1,5 @@
+mosaicml-streaming==0.9.1
+datasets==3.1.0
+oci==2.138.1
+webdataset==0.2.100
+litdata==0.2.31

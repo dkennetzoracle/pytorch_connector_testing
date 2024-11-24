@@ -1,44 +1,20 @@
-import oci
-from oci.object_storage import ObjectStorageClient
-from oci.object_storage.models import CreateBucketDetails
-import os
-import webdataset as wds
-from datasets import load_dataset
-from tqdm import tqdm
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import os
+import sys
 
-def create_bucket_if_not_exists(
-        object_storage_client: ObjectStorageClient,
-        bucket_name: str,
-        namespace: str,
-        oci_compartment_id: str
-    ) -> None:
-    """ Creates output bucket in OCI if it does not already exist.
-    Args:
-        object_storage_client: oci.object_storage.ObjectStorageClient to connect to object storage
-        bucket_name: Name of output bucket to check or create
-        namespace: Object storage namespace (retrieved prior to this in main function)
-        oci_compartment_id: Compartment ID in OCI in which to create the bucket.
-    Returns: None
-    """
-    try:
-        object_storage_client.get_bucket(namespace_name=namespace, bucket_name=bucket_name)
-        print(f"Bucket {bucket_name} already exists")
-    except oci.exceptions.ServiceError as e:
-        if e.status == 404: # Bucket DNE
-            print(f"Creating bucket: {bucket_name} in namespace: {namespace}")
-            create_bucket_details = CreateBucketDetails(
-                name=bucket_name,
-                compartment_id=oci_compartment_id,
-                storage_tier="Standard",
-                public_access_type="NoPublicAccess"
-            )
-            object_storage_client.create_bucket(namespace_name=namespace,
-                                                create_bucket_details=create_bucket_details)
-            print(f"Bucket {bucket_name} created successfully.")
-        else:
-            raise
+from datasets import load_dataset
+import oci
+from oci.object_storage import ObjectStorageClient
+import webdataset as wds
+from tqdm import tqdm
+
+# Local imports
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
+sys.path.append(project_root)
+
+from utils.oci_utils import create_bucket_if_not_exists 
+from utils.parse_args import hf_optimizer_parse_args
 
 # Function to upload data to OCI Object Storage
 def upload_to_oci(object_storage_client: ObjectStorageClient, namespace, bucket_name, object_name, data, fname):
@@ -67,9 +43,9 @@ async def async_upload_to_oci(executor, object_storage_client, namespace, bucket
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(executor, upload_to_oci, object_storage_client, namespace, bucket_name, object_name, data, fname)
 
-async def process_and_upload(dataset, shard_pattern, executor, object_storage_client, namespace, bucket_name):
+async def process_and_upload(dataset, shard_pattern, executor, object_storage_client, namespace, bucket_name, compress=False, max_uploaders=1):
     upload_tasks = set()
-    with wds.ShardWriter(shard_pattern, verbose=True, maxcount=10000, maxsize=2**26) as sink:
+    with wds.ShardWriter(shard_pattern, verbose=True, maxcount=2**16, maxsize=2**26, compress=compress) as sink:
         for index, sample in enumerate(tqdm(dataset)):
             # Process and write each sample
             data = process_sample(sample, index)
@@ -94,7 +70,7 @@ async def process_and_upload(dataset, shard_pattern, executor, object_storage_cl
                     )
                 )
                 upload_tasks.add(upload_task)
-                if len(upload_tasks) > 16:
+                if len(upload_tasks) > max_uploaders:
                     done, upload_tasks = await asyncio.wait(upload_tasks, return_when=asyncio.FIRST_COMPLETED)
                     for task in done:
                         await task
@@ -102,21 +78,26 @@ async def process_and_upload(dataset, shard_pattern, executor, object_storage_cl
 
 
 async def main():
-    executor = ThreadPoolExecutor(max_workers=16)  # Adjust the number of workers as needed
+    args = hf_optimizer_parse_args()
+    executor = ThreadPoolExecutor(max_workers=args.max_workers)  # Adjust the number of workers as needed
     # Load the C4 dataset from AllenAI
-    dataset = load_dataset("allenai/c4", "en", split="train", trust_remote_code=True, cache_dir="/mnt/nvme/datasets/allenai_c4_en", streaming=True)
-    compartment_id = "ocid1.compartment.oc1..aaaaaaaa5rwhi5wj3grdiqzvz244gwzycpfl2ctlb4nvl7vi7wu55tqi375a"
+    dataset = load_dataset(args.dataset_name,
+                           args.dataset_subname,
+                           trust_remote_code=True,
+                           split="train",
+                           streaming=True)
+
     # Set up OCI client
-    config = oci.config.from_file("~/.oci/config")
-    object_storage_client = oci.object_storage.ObjectStorageClient(config)
+    config = oci.config.from_file(file_location=args.oci_config_path,
+                                  profile_name=args.oci_profile)
+    object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
-    bucket_name = "wds_allenai_c4_en_compressed"
     create_bucket_if_not_exists(object_storage_client=object_storage_client,
-                                bucket_name=bucket_name, namespace=namespace,
-                                oci_compartment_id=compartment_id)
+                                bucket_name=args.output_bucket, namespace=namespace,
+                                oci_compartment_id=args.compartment_id)
 
     # Initialize the ShardWriter to write to an in-memory buffer
-    cache_dir = "/mnt/nvme/datasets/wds_shards/"
+    cache_dir = os.path.expanduser(args.cache_dir)
     os.makedirs(cache_dir, exist_ok=True)
     shard_pattern = os.path.join(cache_dir, "c4_shard-%06d.tar")
     all_upload_tasks = await process_and_upload(
@@ -125,7 +106,9 @@ async def main():
         executor=executor,
         object_storage_client=object_storage_client,
         namespace=namespace,
-        bucket_name=bucket_name
+        bucket_name=args.output_bucket,
+        compress=args.compress_data,
+        max_uploaders=args.max_workers
     )
 
     if all_upload_tasks:

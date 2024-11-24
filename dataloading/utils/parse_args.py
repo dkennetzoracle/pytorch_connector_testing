@@ -43,3 +43,21 @@ def local_optimizer_parse_args() -> argparse.Namespace:
     parser.add_argument("--max-workers", type=int, default=1,
                         help="Max workers to use for file uploading to object storage.")
     return parser.parse_args()
+
+def stream_from_bucket_parser() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Arguments for streaming optimized datasets from bucket."
+    )
+    parser.add_argument("--oci-config-path", default="~/.oci/config",
+                        help="OCI config to use. Default='~/.oci/config'")
+    parser.add_argument("--oci-profile", default="DEFAULT",
+                        help="OCI Profile to use. Default='DEFAULT'")
+    parser.add_argument("--compartment-id", required=True,
+                        help="The compartment ID in OCI in which to create the bucket")
+    parser.add_argument("--local-cache", required=True,
+                        help="Local cache dir for intermediate data.")
+    parser.add_argument("--bucket-name", required=True,
+                        help="Name of bucket containing optimized mds data.")
+    parser.add_argument("--local-cache-max-size", default="25gb",
+                        help="Maximum size of items to keep in local cache.")
+    return parser.parse_args()

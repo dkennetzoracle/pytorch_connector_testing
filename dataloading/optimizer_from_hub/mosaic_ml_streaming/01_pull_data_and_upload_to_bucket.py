@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import argparse
 import os
 import sys
 
@@ -40,10 +39,10 @@ def main():
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
     create_bucket_if_not_exists(object_storage_client=object_storage_client,
-                                bucket_name=args.mds_output_bucket,
+                                bucket_name=args.output_bucket,
                                 namespace=namespace,
                                 oci_compartment_id=args.compartment_id)
-    remote_bucket = f'oci://{args.mds_output_bucket}@{namespace}/'
+    remote_bucket = f'oci://{args.output_bucket}@{namespace}/'
     compression = 'zstd' if args.compress_data else None
     with MDSWriter(out=remote_bucket, columns=columns,
                    compression=compression,

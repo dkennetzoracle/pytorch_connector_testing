@@ -60,4 +60,8 @@ def stream_from_bucket_parser() -> argparse.Namespace:
                         help="Name of bucket containing optimized mds data.")
     parser.add_argument("--local-cache-max-size", default="25gb",
                         help="Maximum size of items to keep in local cache.")
+    parser.add_argument("--pre-authenticated-request", type=str, default=None,
+                        help="Pre-authenticated request for accessing object storage data. Currently required for WDS.")
+    parser.add_argument("--log-file", type=str, default=None,
+                        help="Log file to write streaming results to.")
     return parser.parse_args()

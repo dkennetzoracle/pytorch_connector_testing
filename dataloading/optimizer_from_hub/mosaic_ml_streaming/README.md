@@ -54,6 +54,13 @@ python3 01_pull_data_and_upload_to_bucket.py \
 --max-workers 32
 ```
 
+### Step 3:
+```bash
+python3 03_stream_data_from_bucket.py \
+--compartment-id ocid1.compartment.oc1..aaaaaaaa...123a \
+--local-cache /mnt/nvme/datasets/mds_cache \
+--bucket-name mosaic_ml_allenai_c4_en_compressed
+```
 
 ## Experiential Evaluations
 

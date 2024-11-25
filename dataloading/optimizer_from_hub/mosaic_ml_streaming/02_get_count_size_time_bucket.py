@@ -19,13 +19,26 @@ def get_object_details(object_storage_client: ObjectStorageClient,
                        namespace: str,
                        bucket_name: str
 ):
-    list_object_response = object_storage_client.list_objects(
+    resp = object_storage_client.list_objects(
         namespace_name=namespace,
         bucket_name=bucket_name,
         fields='name,size,timeCreated'
     )
-    print(list_object_response.data)
-    objects = list_object_response.data.objects
+    sizes = []
+    times = []
+    for object in resp.data.objects:
+        sizes.append(int(object.size) / (1024 * 1024))
+        times.append(object.time_created)
+    while resp.data.next_start_with:
+        resp = resp = object_storage_client.list_objects(namespace,
+                                                         bucket_name,
+                                                         start=resp.data.next_start_with,
+                                                         fields='name,size,timeCreated')
+        for object in resp.data.objects:
+            sizes.append(int(object.size) / (1024 * 1024))
+            times.append(object.time_created)
+    return sizes, sorted(times)
+    
     
 
 def main() -> int:
@@ -34,9 +47,11 @@ def main() -> int:
     config = oci.config.from_file()
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
-    get_object_details(object_storage_client=object_storage_client,
-                       namespace=namespace,
-                       bucket_name=args.bucket_name)
+    sizes, times = get_object_details(object_storage_client=object_storage_client,
+                                      namespace=namespace,
+                                      bucket_name=args.bucket_name)
+    print(times[-1] - times[0])
+    print(f"{sum(sizes) / 1024}GB")
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -4,3 +4,4 @@ oci==2.138.1
 webdataset==0.2.100
 litdata==0.2.31
 peft==0.13.2
+trl==0.12.1

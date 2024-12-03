@@ -2,7 +2,7 @@ from typing import Tuple
 
 from streaming import StreamingDataset, StreamingDataLoader
 
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig
 import torch
 from transformers import (
     AutoModelForCausalLM,
@@ -26,13 +26,13 @@ def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args):
                                cache_limit=data_args.local_cache_max_size,)
     dataset = dataset.map(
         lambda samples: tokenizer(samples['text'],
-                                  max_length=2048,
+                                  max_length=data_args.max_seq_length,
                                   truncation=True,
                                   ), batched=True
     )
     return dataset
 
-def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
+def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoTokenizer, LoraConfig]:
     """ Setup a model for fine-tuning. """
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_path,
@@ -51,5 +51,4 @@ def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoToke
 
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_path)
     tokenizer.pad_token = tokenizer.eos_token
-    model = get_peft_model(model, peft_config)
-    return model, tokenizer
+    return model, tokenizer, peft_config

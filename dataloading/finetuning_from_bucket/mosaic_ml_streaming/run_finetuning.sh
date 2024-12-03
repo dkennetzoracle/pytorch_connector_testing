@@ -2,11 +2,6 @@
 
 accelerate launch \
     --config_file configs/fsdp_config.yaml \
-    --main_process_ip $MASTER_ADDR \
-    --main_process_port $MASTER_PORT \
-    --machine_rank \$MACHINE_RANK \
-    --num_processes 16 \
-    --num_machines 2 \
     train.py \
     --seed 100 \
     --model_name "meta-llama/Llama-2-70b-chat-hf" \
@@ -40,4 +35,9 @@ accelerate launch \
     --dataset_text_field "content" \
     --use_flash_attn True \
     --ddp_timeout 5400 \
-    --optim paged_adamw_32bit
+    --optim paged_adamw_32bit \
+    --world_size 16 \
+    --local_world_size 8 \
+    --rank 0 \
+    --master_ip_addr 10.140.19.72 \
+    --master_port 12355

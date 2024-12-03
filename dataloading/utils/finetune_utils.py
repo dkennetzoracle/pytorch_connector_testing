@@ -24,7 +24,6 @@ def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args, ddp_a
                                batch_size=trainer_args.train_batch_size,
                                shuffle=True,
                                cache_limit=data_args.local_cache_max_size_gbs,
-                               split='train',
                                num_canonical_nodes=ddp_args.world_size,
                                shuffle_seed=trainer_args.seed
                                )

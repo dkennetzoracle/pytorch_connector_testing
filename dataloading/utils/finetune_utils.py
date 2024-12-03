@@ -18,7 +18,7 @@ def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args):
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
     remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
-    dataset = StreamingDataset(local=data_args.local_cache,
+    dataset = StreamingDataset(local=data_args.local_cache_path,
                                remote=remote_bucket,
                                download_retry=3,
                                batch_size=trainer_args.train_batch_size,

@@ -1,5 +1,10 @@
 # MosaicML FineTuning
 
+Pre-req install flash-attn2
+```bash
+pip3 install flash-attn --no-build-isolation
+```
+
 This needs to be run on each machine prior to launch to properly configure the setup. The only thing that needs to change when running on next machines is the `rank`, which should be set to 1 on the second machine:
 ```bash
 accelerate config --config_file "fsdp_config.yaml"

@@ -23,7 +23,7 @@ def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args):
                                download_retry=3,
                                batch_size=trainer_args.train_batch_size,
                                shuffle=True,
-                               cache_limit=data_args.local_cache_max_size,)
+                               cache_limit=data_args.local_cache_max_size_gbs,)
     dataset = dataset.map(
         lambda samples: tokenizer(samples['text'],
                                   max_length=data_args.max_seq_length,

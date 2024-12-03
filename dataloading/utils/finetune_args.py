@@ -79,6 +79,7 @@ class DataTrainingArguments:
             "help": "Path to local dataset cache to use while streaming."
         }
     )
+    batch_size: Optional[int] = field(default=64)
     packing: Optional[bool] = field(
         default=False,
         metadata={"help": "Use packing dataset creating."},

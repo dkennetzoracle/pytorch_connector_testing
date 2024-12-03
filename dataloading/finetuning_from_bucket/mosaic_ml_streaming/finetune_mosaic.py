@@ -21,7 +21,7 @@ class MosaicMLTrainer(SFTTrainer):
     def get_train_dataloader(self) -> StreamingDataLoader:
         return StreamingDataLoader(
             self.train_dataset,
-            batch_size=self.args.dataset_batch_size,
+            batch_size=self.dataset_batch_size,
             num_workers=self.args.dataloader_num_workers,
             drop_last=True
         )
@@ -59,6 +59,7 @@ def main(model_args, data_args, training_args, ddp_args):
         packing=data_args.packing,
         dataset_text_field=data_args.dataset_text_field,
         max_seq_length=data_args.max_seq_length,
+        dataset_batch_size=data_args.batch_size
 
     )
     trainer.accelerator.print(f"{trainer.model}")

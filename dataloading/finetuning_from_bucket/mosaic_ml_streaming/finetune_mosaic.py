@@ -10,6 +10,8 @@ from transformers import HfArgumentParser, TrainingArguments
 from transformers import set_seed
 from trl import SFTTrainer
 
+import torch.distributed as dist
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 sys.path.append(project_root)
 
@@ -31,6 +33,7 @@ def setup(ddp_args):
     os.environ['RANK'] = str(ddp_args.rank)
     os.environ['MASTER_ADDR'] = ddp_args.master_ip_addr
     os.environ['MASTER_PORT'] = str(ddp_args.master_port)
+    dist.init_process_group(backend="nccl")
 
 def main(model_args, data_args, training_args, ddp_args):
     setup(ddp_args)

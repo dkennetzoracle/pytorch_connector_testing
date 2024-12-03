@@ -21,6 +21,7 @@ def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args, ddp_a
     dataset = StreamingDataset(local=data_args.local_cache_path,
                                remote=remote_bucket,
                                download_retry=3,
+                               download_timeout=600,
                                batch_size=trainer_args.train_batch_size,
                                shuffle=True,
                                cache_limit=data_args.local_cache_max_size_gbs,

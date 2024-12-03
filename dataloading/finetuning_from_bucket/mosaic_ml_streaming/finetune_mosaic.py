@@ -9,9 +9,6 @@ from streaming import StreamingDataLoader
 from transformers import HfArgumentParser, TrainingArguments, Trainer, DataCollatorForLanguageModeling
 from transformers import set_seed
 
-import oci
-from oci.object_storage import ObjectStorageClient
-
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 sys.path.append(project_root)
 
@@ -31,14 +28,12 @@ def setup(ddp_args):
     os.environ['LOCAL_WORLD_SIZE'] = str(ddp_args.local_world_size)
     os.environ['RANK'] = str(ddp_args.rank)
     os.environ['MASTER_ADDR'] = ddp_args.master_ip_addr
-    os.environ['MASTER_PORT'] = ddp_args.master_port
+    os.environ['MASTER_PORT'] = str(ddp_args.master_port)
 
 def main(model_args, data_args, training_args, ddp_args):
     setup(ddp_args)
     set_seed(training_args.seed)
-    model, peft_config, tokenizer = create_and_prepare_model(
-        model_args, data_args, training_args
-    )
+    model, tokenizer = create_and_prepare_model(model_args)
     model.config.use_cache = not training_args.gradient_checkpointing
     if training_args.gradient_checkpointing:
         training_args.gradient_checkpointing_kwargs = {

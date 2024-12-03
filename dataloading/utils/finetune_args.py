@@ -79,10 +79,6 @@ class DataTrainingArguments:
             "help": "Path to local dataset cache to use while streaming."
         }
     )
-    dataset_name: Optional[str] = field(
-        default="timdettmers/openassistant-guanaco",
-        metadata={"help": "The preference dataset to use."},
-    )
     packing: Optional[bool] = field(
         default=False,
         metadata={"help": "Use packing dataset creating."},
@@ -91,18 +87,6 @@ class DataTrainingArguments:
         default="text", metadata={"help": "Dataset field to use as input text."}
     )
     max_seq_length: Optional[int] = field(default=2048)
-    append_concat_token: Optional[bool] = field(
-        default=False,
-        metadata={
-            "help": "If True, appends `eos_token_id` at the end of each sample being packed."
-        },
-    )
-    add_special_tokens: Optional[bool] = field(
-        default=False,
-        metadata={
-            "help": "If True, tokenizers adds special tokens to each sample being packed."
-        },
-    )
     splits: Optional[str] = field(
         default="train",
         metadata={"help": "Comma separate list of the splits to use from the dataset."},

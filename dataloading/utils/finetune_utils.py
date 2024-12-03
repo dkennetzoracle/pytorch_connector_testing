@@ -32,12 +32,12 @@ def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args):
     )
     return dataset
 
-def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoTokenizer, LoraConfig]:
+def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoTokenizer]:
     """ Setup a model for fine-tuning. """
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_path,
         attn_implementation="flash_attention_2",
-        torch_dtype=torch.float16
+        torch_dtype=torch.float32
     )
     # Replace with args versions.
     peft_config = LoraConfig(
@@ -52,4 +52,4 @@ def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoToke
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_path)
     tokenizer.pad_token = tokenizer.eos_token
     model = get_peft_model(model, peft_config)
-    return model, tokenizer, peft_config
+    return model, tokenizer

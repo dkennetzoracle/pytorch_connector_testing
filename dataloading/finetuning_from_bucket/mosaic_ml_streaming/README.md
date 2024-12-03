@@ -1,6 +1,6 @@
 # MosaicML FineTuning
 
-This needs to be run on each machine prior to launch to properly configure the setup:
+This needs to be run on each machine prior to launch to properly configure the setup. The only thing that needs to change when running on next machines is the `rank`, which should be set to 1 on the second machine:
 ```bash
 accelerate config --config_file "fsdp_config.yaml"
 
@@ -53,7 +53,7 @@ Do you want to enable CPU RAM efficient model loading? Only applicable for 🤗 
 
 Do you want to enable FSDP activation checkpointing? [yes/NO]: 
 
-How many GPU(s) should be used for distributed training? [1]:8
+How many GPU(s) should be used for distributed training? [1]:16
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------Do you wish to use mixed precision?
 bf16                                                                                                                                                     
@@ -84,7 +84,7 @@ main_process_port: 12355
 main_training_function: main
 mixed_precision: bf16
 num_machines: 2
-num_processes: 8
+num_processes: 16
 rdzv_backend: static
 same_network: true
 tpu_env: []

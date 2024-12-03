@@ -10,7 +10,6 @@ from transformers import HfArgumentParser, TrainingArguments
 from transformers import set_seed
 from trl import SFTTrainer
 
-import torch.distributed as dist
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 sys.path.append(project_root)
@@ -22,7 +21,7 @@ class MosaicMLTrainer(SFTTrainer):
     def get_train_dataloader(self) -> StreamingDataLoader:
         return StreamingDataLoader(
             self.train_dataset,
-            batch_size=self.args.train_batch_size,
+            batch_size=self.args.dataset_batch_size,
             num_workers=self.args.dataloader_num_workers,
             drop_last=True
         )
@@ -33,7 +32,11 @@ def setup(ddp_args):
     os.environ['RANK'] = str(ddp_args.rank)
     os.environ['MASTER_ADDR'] = ddp_args.master_ip_addr
     os.environ['MASTER_PORT'] = str(ddp_args.master_port)
-    dist.init_process_group(backend="nccl")
+    print(f"{os.environ['WORLD_SIZE']=}")
+    print(f"{os.environ['LOCAL_WORLD_SIZE']=}")
+    print(f"{os.environ['RANK']=}")
+    print(f"{os.environ['MASTER_ADDR']=}")
+    print(f"{os.environ['MASTER_PORT']}=")
 
 def main(model_args, data_args, training_args, ddp_args):
     setup(ddp_args)

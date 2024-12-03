@@ -22,7 +22,7 @@ def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args, ddp_a
                                remote=remote_bucket,
                                download_retry=3,
                                download_timeout=600,
-                               batch_size=trainer_args.train_batch_size,
+                               batch_size=trainer_args.dataset_batch_size,
                                shuffle=True,
                                cache_limit=data_args.local_cache_max_size_gbs,
                                num_canonical_nodes=ddp_args.world_size,

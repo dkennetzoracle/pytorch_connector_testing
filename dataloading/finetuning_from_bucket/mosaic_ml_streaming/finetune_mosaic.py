@@ -21,7 +21,8 @@ class MosaicMLTrainer(SFTTrainer):
         return StreamingDataLoader(
             self.train_dataset,
             batch_size=self.args.train_batch_size,
-            num_workers=self.args.dataloader_num_workers
+            num_workers=self.args.dataloader_num_workers,
+            drop_last=True
         )
 
 def setup(ddp_args):
@@ -41,7 +42,7 @@ def main(model_args, data_args, training_args, ddp_args):
             "use_reentrant": model_args.use_reentrant
         }
     
-    train_dataset = create_mosaic_ml_streaming_dataset(tokenizer, data_args, training_args)
+    train_dataset = create_mosaic_ml_streaming_dataset(tokenizer, data_args, training_args, ddp_args)
 
     trainer = SFTTrainer(
         model=model,

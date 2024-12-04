@@ -4,6 +4,10 @@ import sys
 import tempfile
 import shutil
 
+from tqdm import tqdm
+from torch.nn.utils.rnn import pad_sequence
+
+import torch
 from peft import get_peft_model
 
 ## MosaicML imports
@@ -23,7 +27,8 @@ sys.path.append(project_root)
 from utils.finetune_args import ModelArguments, DataTrainingArguments, DDPArguments
 from utils.finetune_utils import create_and_prepare_model
 
-logging.basicConfig(level=logging.DEBUG)
+#--------------------------------------------------------------------
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('streaming')
 logger.setLevel(logging.INFO)
 
@@ -38,8 +43,21 @@ class MosaicMLTrainer(Trainer):
             num_workers=self.args.dataloader_num_workers,
             drop_last=True,
             persistent_workers=True,
-            
+            collate_fn=self.data_collator
         )    
+
+def collate_fn(batch):
+    input_ids = [item['input_ids'] for item in batch]
+    attention_mask = [item['attention_mask'] for item in batch]
+    
+    # Pad sequences to the maximum length in the batch
+    input_ids = pad_sequence([torch.tensor(ids) for ids in input_ids], batch_first=True, padding_value=0)
+    attention_mask = pad_sequence([torch.tensor(mask) for mask in attention_mask], batch_first=True, padding_value=0)
+    
+    return {
+        'input_ids': input_ids,
+        'attention_mask': attention_mask
+    }
 
 def main(model_args, data_args, training_args, ddp_args):
     print(f"{os.environ['WORLD_SIZE']=}")
@@ -73,7 +91,20 @@ def main(model_args, data_args, training_args, ddp_args):
                           tokenizer_name=model_args.model_path,
                           group_method='truncate',
                           max_seq_len=data_args.max_seq_length)
-    logger.info("StreamingDataset initialized successfully")
+    ## Debuggery
+    """ loader = StreamingDataLoader(
+        dataset,
+        batch_size=data_args.batch_size,
+        num_workers=training_args.dataloader_num_workers,
+        collate_fn=collate_fn
+    )
+    num_samples = 0
+    for data in tqdm(loader, smoothing=0, mininterval=1):
+        print(f"{data=}")
+        num_samples += 1
+        if num_samples == 1:
+            sys.exit()
+    logger.info("StreamingDataset initialized successfully") """
 
     model, tokenizer, peft_config = create_and_prepare_model(model_args)
     tokenizer.pad_token = tokenizer.eos_token
@@ -89,10 +120,18 @@ def main(model_args, data_args, training_args, ddp_args):
         model=model,
         train_dataset=dataset,
         args=training_args,
+        data_collator=collate_fn
+    )
+
+    """ trainer = MosaicMLTrainer(
+        streaming_batch_size=data_args.batch_size,
+        model=model,
+        train_dataset=dataset,
+        args=training_args,
         data_collator=DataCollatorForLanguageModeling(
             tokenizer, mlm=False
         )
-    )
+    ) """
     model.config.use_cache = False
     trainer.train()
     trainer.save_model(training_args.output_dir)

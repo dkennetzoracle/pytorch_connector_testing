@@ -4,18 +4,20 @@ import sys
 from typing import Optional
 
 ## MosaicML imports
-from streaming import StreamingDataLoader
+from streaming import StreamingDataLoader, StreamingDataset
 
 from transformers import HfArgumentParser, TrainingArguments
 from transformers import set_seed
 from trl import SFTTrainer
 
+import oci
+from oci.object_storage import ObjectStorageClient
 
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
 sys.path.append(project_root)
 
 from utils.finetune_args import ModelArguments, DataTrainingArguments, DDPArguments
-from utils.finetune_utils import create_and_prepare_model, create_mosaic_ml_streaming_dataset
+from utils.finetune_utils import create_and_prepare_model
 
 class MosaicMLTrainer(SFTTrainer):
     def get_train_dataloader(self) -> StreamingDataLoader:
@@ -36,7 +38,7 @@ def setup(ddp_args):
     print(f"{os.environ['LOCAL_WORLD_SIZE']=}")
     print(f"{os.environ['RANK']=}")
     print(f"{os.environ['MASTER_ADDR']=}")
-    print(f"{os.environ['MASTER_PORT']}=")
+    print(f"{os.environ['MASTER_PORT']=}")
 
 def main(model_args, data_args, training_args, ddp_args):
     setup(ddp_args)
@@ -48,7 +50,28 @@ def main(model_args, data_args, training_args, ddp_args):
             "use_reentrant": model_args.use_reentrant
         }
     
-    train_dataset = create_mosaic_ml_streaming_dataset(tokenizer, data_args, training_args, ddp_args)
+    config = oci.config.from_file(file_location=data_args.oci_config_path,
+                                  profile_name=data_args.oci_profile)
+    object_storage_client = ObjectStorageClient(config)
+    namespace = object_storage_client.get_namespace().data
+    remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
+    dataset = StreamingDataset(local=data_args.local_cache_path,
+                               remote=remote_bucket,
+                               download_retry=3,
+                               download_timeout=120,
+                               batch_size=data_args.batch_size,
+                               shuffle=True,
+                               cache_limit=data_args.local_cache_max_size_gbs,
+                               num_canonical_nodes=ddp_args.world_size,
+                               shuffle_seed=training_args.seed,
+                               shuffle_algo='py1e'
+                               )
+    train_dataset = dataset.map(
+        lambda samples: tokenizer(samples['text'],
+                                  max_length=data_args.max_seq_length,
+                                  truncation=True,
+                                  ), batched=True
+    )
 
     trainer = SFTTrainer(
         model=model,

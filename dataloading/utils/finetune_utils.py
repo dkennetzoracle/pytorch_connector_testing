@@ -1,7 +1,5 @@
 from typing import Tuple
 
-from streaming import StreamingDataset, StreamingDataLoader
-
 from peft import LoraConfig
 import torch
 from transformers import (
@@ -9,32 +7,6 @@ from transformers import (
     AutoTokenizer,
 )
 
-import oci
-from oci.object_storage import ObjectStorageClient
-
-def create_mosaic_ml_streaming_dataset(tokenizer, data_args, trainer_args, ddp_args):
-    config = oci.config.from_file(file_location=data_args.oci_config_path,
-                                  profile_name=data_args.oci_profile)
-    object_storage_client = ObjectStorageClient(config)
-    namespace = object_storage_client.get_namespace().data
-    remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
-    dataset = StreamingDataset(local=data_args.local_cache_path,
-                               remote=remote_bucket,
-                               download_retry=3,
-                               download_timeout=600,
-                               batch_size=data_args.batch_size,
-                               shuffle=True,
-                               cache_limit=data_args.local_cache_max_size_gbs,
-                               num_canonical_nodes=ddp_args.world_size,
-                               shuffle_seed=trainer_args.seed
-                               )
-    dataset = dataset.map(
-        lambda samples: tokenizer(samples['text'],
-                                  max_length=data_args.max_seq_length,
-                                  truncation=True,
-                                  ), batched=True
-    )
-    return dataset
 
 def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoTokenizer, LoraConfig]:
     """ Setup a model for fine-tuning. """

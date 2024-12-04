@@ -11,7 +11,7 @@ import torch
 from peft import get_peft_model
 
 ## MosaicML imports
-from streaming import StreamingDataLoader
+from streaming import StreamingDataLoader, StreamingDataset
 from streaming.text import StreamingC4
 
 from transformers import HfArgumentParser, TrainingArguments, Trainer, DataCollatorForLanguageModeling
@@ -71,9 +71,6 @@ def main(model_args, data_args, training_args, ddp_args):
                                   profile_name=data_args.oci_profile)
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
-    obj = object_storage_client.get_object(namespace_name=namespace,
-                                           bucket_name=data_args.bucket_name,
-                                           object_name="index.json")
 
     remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
     logger.info(f"Initializing StreamingDataset with remote={remote_bucket}")
@@ -81,7 +78,7 @@ def main(model_args, data_args, training_args, ddp_args):
                           remote=remote_bucket,
                           download_retry=3,
                           download_timeout=120,
-                          predownload=(data_args.batch_size * 8),
+                          #predownload=(data_args.batch_size * 8),
                           batch_size=data_args.batch_size,
                           shuffle=True,
                           cache_limit=data_args.local_cache_max_size_gbs,
@@ -91,6 +88,7 @@ def main(model_args, data_args, training_args, ddp_args):
                           tokenizer_name=model_args.model_path,
                           group_method='truncate',
                           max_seq_len=data_args.max_seq_length)
+
     ## Debuggery
     """ loader = StreamingDataLoader(
         dataset,

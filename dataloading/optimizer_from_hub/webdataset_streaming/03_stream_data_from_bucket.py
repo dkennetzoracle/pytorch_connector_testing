@@ -57,14 +57,12 @@ def main():
     for epoch in range(2):
         num_samples = 0
         t0 = perf_counter()
-        while num_samples < 1000000:
-            try:
-                for data in tqdm(data_loader, smoothing=0, mininterval=1):
-                    num_samples += count_lists_in_key(data, 'text')
-                    if num_samples >= 1000000:
-                        break
-            except (OSError, IOError):
-                print("Error occurred in data loading")
+
+        for data in tqdm(data_loader, smoothing=0, mininterval=1):
+            num_samples += count_lists_in_key(data, 'text')
+            if num_samples >= 1000000:
+                break
+
         print(f"Completed epoch {epoch}")
         total_samples += num_samples
         t1 = perf_counter()

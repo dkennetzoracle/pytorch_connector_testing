@@ -13,7 +13,7 @@ def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoToke
     model = AutoModelForCausalLM.from_pretrained(
         model_args.model_path,
         attn_implementation="flash_attention_2",
-        torch_dtype=torch.float32
+        torch_dtype=torch.float16
     )
     # Replace with args versions.
     peft_config = LoraConfig(

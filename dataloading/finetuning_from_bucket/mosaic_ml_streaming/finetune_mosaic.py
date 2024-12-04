@@ -64,7 +64,6 @@ def main(model_args, data_args, training_args, ddp_args):
                                download_timeout=120,
                                batch_size=data_args.batch_size,
                                shuffle=True,
-                               predownload=8,
                                cache_limit=data_args.local_cache_max_size_gbs,
                                num_canonical_nodes=ddp_args.world_size,
                                shuffle_seed=training_args.seed,

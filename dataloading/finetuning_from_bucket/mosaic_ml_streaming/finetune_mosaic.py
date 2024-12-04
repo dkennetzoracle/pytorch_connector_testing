@@ -25,12 +25,13 @@ logger = logging.getLogger(__name__)
 
 class MosaicMLTrainer(SFTTrainer):
     def get_train_dataloader(self) -> StreamingDataLoader:
-        return self.accelerator.prepare(StreamingDataLoader(
+        return StreamingDataLoader(
             self.train_dataset,
             batch_size=self.dataset_batch_size,
             num_workers=self.args.dataloader_num_workers,
-            drop_last=True
-        ))
+            drop_last=True,
+            persistent_workers=True,
+        )
 
 def setup(ddp_args):
     os.environ['WORLD_SIZE'] = str(ddp_args.world_size)
@@ -61,14 +62,14 @@ def main(model_args, data_args, training_args, ddp_args):
     obj = object_storage_client.get_object(namespace_name=namespace,
                                            bucket_name=data_args.bucket_name,
                                            object_name="index.json")
-    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+    """ with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
         temp_path = tmp_file.name
         for chunk in obj.data.raw.stream(1024 * 1024, decode_content=False):
             tmp_file.write(chunk)
         index_file = os.path.join(data_args.local_cache_path, "index.json")
         if not os.path.exists(index_file):
             shutil.move(temp_path, index_file)
-        print(f"Wrote {index_file}")
+        print(f"Wrote {index_file}") """
     remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
     logger.info(f"Initializing StreamingDataset with remote={remote_bucket}")
     dataset = StreamingDataset(local=data_args.local_cache_path,
@@ -80,7 +81,8 @@ def main(model_args, data_args, training_args, ddp_args):
                                cache_limit=data_args.local_cache_max_size_gbs,
                                num_canonical_nodes=(ddp_args.world_size // ddp_args.local_world_size),
                                shuffle_seed=training_args.seed,
-                               shuffle_algo='py1e'
+                               shuffle_algo='py1e',
+                               batching_method='per_stream'
                                )
     logger.info("StreamingDataset initialized successfully")
     train_dataset = dataset.map(

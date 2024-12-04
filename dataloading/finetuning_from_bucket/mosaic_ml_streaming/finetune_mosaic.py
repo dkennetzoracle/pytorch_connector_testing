@@ -25,12 +25,12 @@ logger = logging.getLogger(__name__)
 
 class MosaicMLTrainer(SFTTrainer):
     def get_train_dataloader(self) -> StreamingDataLoader:
-        return StreamingDataLoader(
+        return self.accelerator.prepare(StreamingDataLoader(
             self.train_dataset,
             batch_size=self.dataset_batch_size,
             num_workers=self.args.dataloader_num_workers,
             drop_last=True
-        )
+        ))
 
 def setup(ddp_args):
     os.environ['WORLD_SIZE'] = str(ddp_args.world_size)

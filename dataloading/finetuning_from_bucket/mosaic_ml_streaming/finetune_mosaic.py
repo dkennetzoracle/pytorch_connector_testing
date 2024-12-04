@@ -1,7 +1,6 @@
-from dataclasses import dataclass, field
+import logging
 import os
 import sys
-from typing import Optional
 
 ## MosaicML imports
 from streaming import StreamingDataLoader, StreamingDataset
@@ -18,6 +17,9 @@ sys.path.append(project_root)
 
 from utils.finetune_args import ModelArguments, DataTrainingArguments, DDPArguments
 from utils.finetune_utils import create_and_prepare_model
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class MosaicMLTrainer(SFTTrainer):
     def get_train_dataloader(self) -> StreamingDataLoader:
@@ -55,17 +57,20 @@ def main(model_args, data_args, training_args, ddp_args):
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
     remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
+    logger.info(f"Initializing StreamingDataset with remote={remote_bucket}")
     dataset = StreamingDataset(local=data_args.local_cache_path,
                                remote=remote_bucket,
                                download_retry=3,
                                download_timeout=120,
                                batch_size=data_args.batch_size,
                                shuffle=True,
+                               predownload=8,
                                cache_limit=data_args.local_cache_max_size_gbs,
                                num_canonical_nodes=ddp_args.world_size,
                                shuffle_seed=training_args.seed,
                                shuffle_algo='py1e'
                                )
+    logger.info("StreamingDataset initialized successfully")
     train_dataset = dataset.map(
         lambda samples: tokenizer(samples['text'],
                                   max_length=data_args.max_seq_length,

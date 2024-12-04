@@ -6,6 +6,7 @@ import shutil
 
 from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
+from torch.distributed import get_rank, get_world_size, is_initialized
 
 import torch
 from peft import get_peft_model
@@ -60,6 +61,13 @@ def collate_fn(batch):
     }
 
 def main(model_args, data_args, training_args, ddp_args):
+    if not is_initialized():
+        print("Distributed process not initialized.")
+        return
+
+    rank = get_rank()
+    world_size = get_world_size()
+    print(f"Rank {rank}/{world_size} initialized successfully on node {os.environ.get('NODE_RANK', 'unknown')}.")
     print(f"{os.environ['WORLD_SIZE']=}")
     print(f"{os.environ['LOCAL_WORLD_SIZE']=}")
     print(f"{os.environ['RANK']=}")

@@ -74,7 +74,19 @@ def main(model_args, data_args, training_args, ddp_args):
 
     remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
     logger.info(f"Initializing StreamingDataset with remote={remote_bucket}")
-    dataset = StreamingC4(local=data_args.local_cache_path,
+    dataset = StreamingDataset(local=data_args.local_cache_path,
+                               remote=remote_bucket,
+                               download_retry=3,
+                               download_timeout=120,
+                               batch_size=data_args.batch_size,
+                               shuffle=True,
+                               cache_limit=data_args.local_cache_max_size_gbs,
+                               num_canonical_nodes=(ddp_args.world_size // ddp_args.local_world_size),
+                               shuffle_seed=training_args.seed,
+                               shuffle_algo='py1e',
+                               batching_method='per_stream'
+                               )
+    """ dataset = StreamingC4(local=data_args.local_cache_path,
                           remote=remote_bucket,
                           download_retry=3,
                           download_timeout=120,
@@ -87,7 +99,7 @@ def main(model_args, data_args, training_args, ddp_args):
                           shuffle_algo='py1e',
                           tokenizer_name=model_args.model_path,
                           group_method='truncate',
-                          max_seq_len=data_args.max_seq_length)
+                          max_seq_len=data_args.max_seq_length) """
 
     ## Debuggery
     """ loader = StreamingDataLoader(

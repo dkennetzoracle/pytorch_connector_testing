@@ -65,6 +65,12 @@ class ModelArguments:
         default=False,
         metadata={"help": "Gradient Checkpointing param. Refer the related docs"},
     )
+    log_file: Optional[str] = field(
+        default="./logfile.txt",
+        metadata={
+            "help": "Log file to write output to."
+        }
+    )
 
 
 @dataclass

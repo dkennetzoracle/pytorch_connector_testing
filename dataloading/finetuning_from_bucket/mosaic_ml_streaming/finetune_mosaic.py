@@ -1,6 +1,8 @@
 import logging
 import os
 import sys
+import tempfile
+import shutil
 
 ## MosaicML imports
 from streaming import StreamingDataLoader, StreamingDataset
@@ -56,6 +58,17 @@ def main(model_args, data_args, training_args, ddp_args):
                                   profile_name=data_args.oci_profile)
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
+    obj = object_storage_client.get_object(namespace_name=namespace,
+                                           bucket_name=data_args.bucket_name,
+                                           object_name="index.json")
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        temp_path = tmp_file.name
+        for chunk in obj.data.raw.stream(1024 * 1024, decode_content=False):
+            tmp_file.write(chunk)
+        index_file = os.path.join(data_args.local_cache_path, "index.json")
+        if not os.path.exists(index_file):
+            shutil.move(temp_path, index_file)
+        print(f"Wrote {index_file}")
     remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
     logger.info(f"Initializing StreamingDataset with remote={remote_bucket}")
     dataset = StreamingDataset(local=data_args.local_cache_path,

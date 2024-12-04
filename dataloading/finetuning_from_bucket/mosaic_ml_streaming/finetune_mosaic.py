@@ -122,8 +122,6 @@ if __name__ == "__main__":
         (ModelArguments, DataTrainingArguments, TrainingArguments, DDPArguments)
     )
     model_args, data_args, training_args, ddp_args = parser.parse_args_into_dataclasses()
-    if os.path.isdir(data_args.local_cache_path):
-        shutil.rmtree(data_args.local_cache_path)
     os.makedirs(data_args.local_cache_path, exist_ok=True)
     logging.info(f"Created {data_args.local_cache_path}")
     main(model_args, data_args, training_args, ddp_args)

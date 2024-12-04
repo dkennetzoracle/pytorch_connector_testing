@@ -65,7 +65,7 @@ def main(model_args, data_args, training_args, ddp_args):
                                batch_size=data_args.batch_size,
                                shuffle=True,
                                cache_limit=data_args.local_cache_max_size_gbs,
-                               num_canonical_nodes=ddp_args.world_size,
+                               num_canonical_nodes=(ddp_args.world_size // ddp_args.local_world_size),
                                shuffle_seed=training_args.seed,
                                shuffle_algo='py1e'
                                )

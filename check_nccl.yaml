@@ -1,12 +1,12 @@
 compute_environment: LOCAL_MACHINE
-debug: true
+debug: false
 distributed_type: MULTI_GPU
 downcast_bf16: 'no'
 enable_cpu_affinity: false
 gpu_ids: 0,1,2,3,4,5,6,7
-machine_rank: 0
-main_process_ip: 10.140.19.72
-main_process_port: 12345
+machine_rank: 1
+main_process_ip: 172.16.6.118
+main_process_port: 29500
 main_training_function: main
 mixed_precision: bf16
 num_machines: 2

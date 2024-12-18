@@ -6,3 +6,4 @@ litdata==0.2.31
 peft==0.13.2
 trl==0.12.1
 wheel==0.45.1
+bitsandbytes==0.45.0

@@ -2,3 +2,5 @@
 *__pycache__*
 *log*
 fsdp_config.yaml
+*.out
+*.err

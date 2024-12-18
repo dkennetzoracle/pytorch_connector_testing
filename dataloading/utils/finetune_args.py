@@ -44,9 +44,9 @@ class ModelArguments:
             "help": "Path to pretrained model"
         }
     )
-    lora_alpha: Optional[int] = field(default=16)
+    lora_alpha: Optional[int] = field(default=8)
     lora_dropout: Optional[float] = field(default=0.1)
-    lora_r: Optional[int] = field(default=64)
+    lora_r: Optional[int] = field(default=32)
     lora_target_modules: Optional[str] = field(
         default="q_proj,k_proj,v_proj,o_proj,down_proj,up_proj,gate_proj",
         metadata={
@@ -71,7 +71,6 @@ class ModelArguments:
             "help": "Log file to write output to."
         }
     )
-
 
 @dataclass
 class DataTrainingArguments:

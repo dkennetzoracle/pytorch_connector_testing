@@ -4,3 +4,5 @@
 fsdp_config.yaml
 *.out
 *.err
+*.csv
+*.png

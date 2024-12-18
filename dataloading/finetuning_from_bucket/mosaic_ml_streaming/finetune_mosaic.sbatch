@@ -32,7 +32,7 @@ export LAUNCHER="accelerate launch \
   "
 
 export PROGRAM="\
-dataloading/finetuning_from_bucket/mosaic_ml_streaming/finetune_mosaic.py \
+~/pytorch_connector_testing/dataloading/finetuning_from_bucket/mosaic_ml_streaming/finetune_mosaic.py \
     --bucket_name mosaic_ml_allenai_c4_en_compressed \
     --seed 100 \
     --world_size 16 \
@@ -67,13 +67,13 @@ dataloading/finetuning_from_bucket/mosaic_ml_streaming/finetune_mosaic.py \
     --warmup_ratio 0.03 \
     --max_grad_norm 1.0 \
     --output_dir /nfs/cluster/finetune_mosaic_ml \
-    --num_train_epochs 2 \
+    --max_steps 3250 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 1 \
     --gradient_checkpointing True \
     --optim paged_adamw_32bit \
-    --dataloader_num_workers 16 \
+    --dataloader_num_workers 1 \
     --dataloader_persistent_workers True"
 
 export CMD="$LAUNCHER $PROGRAM"

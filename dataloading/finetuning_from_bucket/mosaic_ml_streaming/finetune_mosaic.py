@@ -43,6 +43,7 @@ class MosaicMLTrainer(Trainer):
 
     #---------------------------------------------------------------------------
     def get_train_dataloader(self) -> StreamingDataLoader:
+        """ Override the dataloader in transformers.Trainer() """
         return StreamingDataLoader(
             self.train_dataset,
             batch_size=self.streaming_batch_size,

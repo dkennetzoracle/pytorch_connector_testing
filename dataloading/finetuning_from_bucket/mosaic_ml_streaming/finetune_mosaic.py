@@ -1,23 +1,18 @@
 import logging
 import os
 import sys
-import tempfile
-import shutil
+from typing import Optional, Any
 
-from tqdm import tqdm
-from torch.nn.utils.rnn import pad_sequence
 from torch.distributed import get_rank, get_world_size, is_initialized
+from torch.nn.utils.rnn import pad_sequence
 
-import torch
 from peft import get_peft_model
 
 ## MosaicML imports
 from streaming import StreamingDataLoader, StreamingDataset
-from streaming.text import StreamingC4
 
-from transformers import HfArgumentParser, TrainingArguments, Trainer, DataCollatorForLanguageModeling
+from transformers import HfArgumentParser, TrainingArguments, Trainer, AutoTokenizer
 from transformers import set_seed
-from trl import SFTTrainer
 
 import oci
 from oci.object_storage import ObjectStorageClient
@@ -36,20 +31,24 @@ logger.setLevel(logging.INFO)
 
 #-------------------------------------------------------------------------------
 class MosaicMLTrainer(Trainer):
-    def __init__(self, streaming_batch_size: int, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.streaming_batch_size = streaming_batch_size
-
 
     #---------------------------------------------------------------------------
     def get_train_dataloader(self) -> StreamingDataLoader:
         """ Override the dataloader in transformers.Trainer() """
-        return StreamingDataLoader(
-            self.train_dataset,
-            batch_size=self.streaming_batch_size,
-            drop_last=True,
-            collate_fn=self.data_collator
-        )
+        train_dataset = self.train_dataset
+        data_collator = self.data_collator
+
+        dataloader_params = {
+            "batch_size": self._train_batch_size,
+            "collate_fn": data_collator,
+            "num_workers": self.args.dataloader_num_workers,
+            "pin_memory": self.args.dataloader_pin_memory,
+            "persistent_workers": self.args.dataloader_persistent_workers,
+        }
+
+        return self.accelerator.prepare(StreamingDataLoader(train_dataset, **dataloader_params))
 
 
     #---------------------------------------------------------------------------
@@ -68,11 +67,79 @@ class MosaicMLTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 #-------------------------------------------------------------------------------
+class StreamingC4Dataset(StreamingDataset):
+    """ Init c4 dataset correctly. """
+    def __init__(self,
+                 *,
+                 remote: Optional[str] = None,
+                 local: Optional[str] = None,
+                 split: Optional[str] = None,
+                 download_retry: int = 2,
+                 download_timeout: float = 60,
+                 validate_hash: Optional[str] = None,
+                 keep_zip: bool = False,
+                 epoch_size: Optional[int] = None,
+                 predownload: Optional[int] = None,
+                 cache_limit: Optional[int] = None,
+                 partition_algo: str = 'orig',
+                 num_canonical_nodes: Optional[int] = None,
+                 batch_size: Optional[int] = None,
+                 shuffle: bool = False,
+                 shuffle_algo: str = 'py1s',
+                 shuffle_seed: int = 9176,
+                 shuffle_block_size: int = 1 << 18,
+                 tokenizer: AutoTokenizer,
+                 max_seq_len: int) -> None:
+
+        super().__init__(remote=remote,
+                         local=local,
+                         split=split,
+                         download_retry=download_retry,
+                         download_timeout=download_timeout,
+                         validate_hash=validate_hash,
+                         keep_zip=keep_zip,
+                         epoch_size=epoch_size,
+                         predownload=predownload,
+                         cache_limit=cache_limit,
+                         partition_algo=partition_algo,
+                         num_canonical_nodes=num_canonical_nodes,
+                         batch_size=batch_size,
+                         shuffle=shuffle,
+                         shuffle_algo=shuffle_algo,
+                         shuffle_seed=shuffle_seed,
+                         shuffle_block_size=shuffle_block_size)
+
+        self.tokenizer = tokenizer
+        self.max_seq_len = max_seq_len
+
+    #---------------------------------------------------------------------------
+    def _tokenize(self, sample: dict[str, Any]):
+        """ Apply the tokenizer """
+        return self.tokenizer(sample['text'],
+                              truncation=True,
+                              padding='max_length',
+                              max_length=self.max_seq_len,
+                              return_tensors="pt")
+    
+    def get_item(self, idx: int) -> Any:
+        """ Get sample by global index, blocking to load its shard if missing."""
+        text_sample = super().get_item(idx)
+        tokenized_sample = self._tokenize(text_sample)
+        input_ids = tokenized_sample["input_ids"].squeeze(0)
+        attention_mask = tokenized_sample["attention_mask"].squeeze(0)
+        # Might need a "labels" here.
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+        }
+    
+
+#-------------------------------------------------------------------------------
 def collate_fn(batch):
     # Extract input_ids and attention_mask from the batch
-    input_ids = [torch.tensor(item['input_ids'], dtype=torch.long) for item in batch]
-    attention_mask = [torch.tensor(item['attention_mask'], dtype=torch.long) for item in batch]
-    labels = [torch.tensor(item['input_ids'], dtype=torch.long) for item in batch]  # Typically same as input_ids
+    input_ids = [item['input_ids'] for item in batch]
+    attention_mask = [item['attention_mask'] for item in batch]
+    labels = [item['input_ids'] for item in batch]
     # Pad sequences to the maximum length in the batch
     input_ids = pad_sequence(input_ids, batch_first=True, padding_value=0)
     attention_mask = pad_sequence(attention_mask, batch_first=True, padding_value=0)
@@ -110,23 +177,24 @@ def main(model_args, data_args, training_args, ddp_args):
     remote_bucket = f'oci://{data_args.bucket_name}@{namespace}/'
     logger.info(f"Initializing StreamingDataset with remote={remote_bucket}")
 
-    dataset = StreamingC4(local=data_args.local_cache_path,
-                          remote=remote_bucket,
-                          download_retry=3,
-                          download_timeout=120,
-                          predownload=(data_args.batch_size * 8),
-                          batch_size=data_args.batch_size,
-                          shuffle=True,
-                          cache_limit=data_args.local_cache_max_size_gbs,
-                          num_canonical_nodes=(ddp_args.world_size // ddp_args.local_world_size),
-                          shuffle_seed=training_args.seed,
-                          shuffle_algo='py1e',
-                          tokenizer_name=model_args.model_path,
-                          group_method='truncate',
-                          max_seq_len=data_args.max_seq_length)
-
-    model, tokenizer, peft_config = create_and_prepare_model(model_args)
+    tokenizer = AutoTokenizer.from_pretrained(model_args.model_path)
     tokenizer.pad_token = tokenizer.eos_token
+    dataset = StreamingC4Dataset(local=data_args.local_cache_path,
+                                 remote=remote_bucket,
+                                 download_retry=3,
+                                 download_timeout=120,
+                                 predownload=(training_args.per_device_train_batch_size * 8),
+                                 batch_size=training_args.per_device_train_batch_size,
+                                 shuffle=True,
+                                 cache_limit=data_args.local_cache_max_size_gbs,
+                                 num_canonical_nodes=(ddp_args.world_size // ddp_args.local_world_size),
+                                 shuffle_seed=training_args.seed,
+                                 shuffle_algo='py1e',
+                                 tokenizer=tokenizer,
+                                 max_seq_len=data_args.max_seq_length)
+
+    model, _, peft_config = create_and_prepare_model(model_args)
+
     model = get_peft_model(model, peft_config)
     model.config.use_cache = not training_args.gradient_checkpointing
     model.config.return_dict = False
@@ -143,8 +211,6 @@ def main(model_args, data_args, training_args, ddp_args):
         data_collator=collate_fn
     )
 
-
-    model.config.use_cache = False
     trainer.train()
     trainer.save_model(training_args.output_dir)
 

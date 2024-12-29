@@ -46,7 +46,7 @@ export PROGRAM="\
     --use_reentrant False \
     --log_file $LOG_PATH \
     --local_cache_path /nfs/cluster/dataset_cache \
-    --batch_size 8 \
+    --batch_size 12 \
     --packing True \
     --dataset_text_field text \
     --max_seq_length 2048 \
@@ -68,13 +68,13 @@ export PROGRAM="\
     --max_grad_norm 1.0 \
     --output_dir /nfs/cluster/finetune_mosaic_ml \
     --max_steps 3250 \
-    --per_device_train_batch_size 1 \
+    --per_device_train_batch_size 12 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 1 \
     --gradient_checkpointing True \
     --optim paged_adamw_32bit \
-    --dataloader_num_workers 1 \
-    --dataloader_persistent_workers True"
+    --dataloader_num_workers 8 \
+    --dataloader_persistent_workers False"
 
 export CMD="$LAUNCHER $PROGRAM"
 

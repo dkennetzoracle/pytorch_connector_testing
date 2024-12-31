@@ -115,3 +115,9 @@ class DataTrainingArguments:
             "help": "Max size of dataset cache while streaming in gbs."
         }
     )
+    num_samples: Optional[int] = field(
+        default=22_804_306,
+        metadata={
+            "help": "Number of samples for training."
+        }
+    )

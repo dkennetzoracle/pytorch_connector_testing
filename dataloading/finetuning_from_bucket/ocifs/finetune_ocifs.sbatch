@@ -3,9 +3,7 @@
 #SBATCH --nodes=2
 #SBATCH --gres=gpu:8
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=96
-
-#set -x -e
+#SBATCH --cpus-per-task=9
 
 source ~/miniconda3/bin/activate
 conda activate py310
@@ -32,8 +30,8 @@ export LAUNCHER="accelerate launch \
   "
 
 export PROGRAM="\
-~/pytorch_connector_testing/dataloading/finetuning_from_bucket/mosaic_ml_streaming/finetune_mosaic.py \
-    --bucket_name mosaic_ml_allenai_c4_en_compressed \
+~/pytorch_connector_testing/dataloading/finetuning_from_bucket/ocifs/finetune_ocifs.py \
+    --bucket_name allenai_c4_en_raw \
     --seed 100 \
     --world_size 16 \
     --local_world_size 8 \
@@ -46,7 +44,7 @@ export PROGRAM="\
     --use_reentrant False \
     --log_file $LOG_PATH \
     --local_cache_path /nfs/cluster/dataset_cache \
-    --batch_size 8 \
+    --batch_size 12 \
     --packing True \
     --dataset_text_field text \
     --max_seq_length 2048 \
@@ -66,18 +64,26 @@ export PROGRAM="\
     --weight_decay 0.01 \
     --warmup_ratio 0.03 \
     --max_grad_norm 1.0 \
-    --output_dir /nfs/cluster/finetune_mosaic_ml \
+    --output_dir /nfs/cluster/finetune_ocifs \
     --max_steps 3250 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 1 \
     --gradient_checkpointing True \
     --optim paged_adamw_32bit \
-    --dataloader_num_workers 8 \
+    --dataloader_num_workers 1 \
     --dataloader_persistent_workers False"
 
 export CMD="$LAUNCHER $PROGRAM"
 
+# Query nvidia-smi for utilization
+# nvidia-smi --query-gpu=timestamp,index,temperature.gpu,utilization.gpu,utilization.memory,memory.total,memory.free,memory.used,clocks.current.sm,clocks.current.memory,power.draw,power.limit --format=csv -l 1 -f ocifs_torch_1.out &
+# NVIDIA_SMI_PID=$!
+
+#trap "echo 'Stopping nvidia-smi'; kill $NVIDIA_SMI_PID" EXIT
+
 srun --jobid $SLURM_JOBID bash -c "$CMD" 2>&1 | tee -a $LOG_PATH
+
+#wait $NVIDIA_SMI_PID
 
 echo "END TIME: $(date)"

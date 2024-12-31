@@ -9,12 +9,14 @@ import oci
 from oci.object_storage import ObjectStorageClient
 import ocifs
 
+from peft import get_peft_model
+
 import torch
 from torch.utils.data import IterableDataset, DistributedSampler
 from torch.distributed import get_rank, get_world_size, is_initialized
 from torch.nn.utils.rnn import pad_sequence
 
-from transformers import AutoTokenizer, Trainer
+from transformers import HfArgumentParser, TrainingArguments, AutoTokenizer, Trainer
 from transformers import set_seed
 
 # Local imports
@@ -38,19 +40,23 @@ class OciFsFileReader:
                  tokenizer: AutoTokenizer,
                  col_to_use: str = "text",
                  max_len: int = 2048,
-                 truncation: bool = True):
+                 truncation: bool = True,
+                 num_files: int = 0):
+        if num_files == 0:
+            raise ValueError("No files found in fs. Check bucket permissions.")
         self.file_path = file_path
         self.fs = fs
         self.tokenizer = tokenizer
         self.col_to_use = col_to_use
         self.max_len = max_len
         self.truncation = truncation
+        self.num_files = num_files
         self.samples = self._load_file()
 
     #---------------------------------------------------------------------------
     def _load_file(self):
         # Read a single file content from OCI Object storage
-        with self.fs.open(self.file_path, "rb") as f:
+        with self.fs.open(self.file_path, "rb", block_size=2**26) as f:
             with gzip.GzipFile(fileobj=f) as gz:
                 lines = gz.readlines()
         data = [json.loads(line.decode("utf-8")) for line in lines]
@@ -58,7 +64,10 @@ class OciFsFileReader:
 
     #---------------------------------------------------------------------------
     def __len__(self):
-        return len(self.samples)
+        """ Rough estimate of sample count based on samples in first file
+            times total number of files.
+        """
+        return len(self.samples) * self.num_files
 
     #---------------------------------------------------------------------------
     def __getitem__(self, idx):
@@ -72,7 +81,8 @@ class C4OciIterableDataset(IterableDataset):
                  tokenizer: AutoTokenizer = None,
                  col_to_use: str = "text",
                  max_len: int = 2048,
-                 truncation: bool = True):
+                 truncation: bool = True,
+                 num_samples = 0):
         """
         Args:
             file_list (list): List of file paths in the bucket.
@@ -85,10 +95,15 @@ class C4OciIterableDataset(IterableDataset):
         self.col_to_use = col_to_use
         self.max_len = max_len
         self.truncation = truncation
+        self.num_samples = num_samples
 
     #---------------------------------------------------------------------------
     def _partition_files(self):
-        """Assign a subset of files to this worker."""
+        """Assign a subset of files to each rank."""
+        rank = get_rank() if is_initialized() else 0
+        world_size = get_world_size() if is_initialized() else 1
+        distributed_partition = self.file_list[rank::world_size]
+        print(f"{rank=}, {world_size=}, {distributed_partition=}")
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is None:
             return self.file_list
@@ -96,7 +111,7 @@ class C4OciIterableDataset(IterableDataset):
             # Partition files across workers
             total_workers = worker_info.num_workers
             worker_id = worker_info.id
-            return self.file_list[worker_id::total_workers]
+            return distributed_partition[worker_id::total_workers]
 
     #---------------------------------------------------------------------------
     def _read_files(self):
@@ -108,7 +123,8 @@ class C4OciIterableDataset(IterableDataset):
                 tokenizer=self.tokenizer,
                 col_to_use=self.col_to_use,
                 max_len=self.max_len,
-                truncation=self.truncation
+                truncation=self.truncation,
+                num_files=len(self.file_list)
             )
             for sample in reader:
                 # Tokenize the current sample and return tensors
@@ -128,6 +144,10 @@ class C4OciIterableDataset(IterableDataset):
     #---------------------------------------------------------------------------                                
     def __iter__(self):
         return self._read_files()
+    
+    #---------------------------------------------------------------------------                                
+    def __len__(self):
+        return self.num_samples
 
 
 #-------------------------------------------------------------------------------
@@ -149,7 +169,10 @@ def collate_fn(batch):
     }
 
 #-------------------------------------------------------------------------------
-def main(args = None):
+def main(model_args: ModelArguments,
+         data_args: DataTrainingArguments,
+         training_args: TrainingArguments,
+         ddp_args: DDPArguments):
     if not is_initialized():
         print("Distributed process not initialized.")
         return
@@ -163,15 +186,18 @@ def main(args = None):
     print(f"{os.environ['MASTER_ADDR']=}")
     print(f"{os.environ['MASTER_PORT']=}")
     print(f"{os.environ['LOCAL_RANK']=}")
-    set_seed(100)
+    set_seed(training_args.seed)
     #set_seed(training_args.seed)
 
-    config = oci.config.from_file()
+    config = oci.config.from_file(file_location=data_args.oci_config_path,
+                                  profile_name=data_args.oci_profile)
     object_storage_client = ObjectStorageClient(config)
     namespace = object_storage_client.get_namespace().data
     fs = ocifs.OCIFileSystem(config=config)
 
-    files = fs.ls(f'allenai_c4_en_raw@{namespace}')
+    logger.info(f"Initializing StreamingDataset with remote={data_args.bucket_name}")
+
+    files = fs.ls(f'{data_args.bucket_name}@{namespace}')
 
     tokenizer = AutoTokenizer.from_pretrained("/nfs/cluster/models/meta-llama/Llama-3.1-70B/")
     tokenizer.pad_token = tokenizer.eos_token
@@ -180,8 +206,9 @@ def main(args = None):
         fs=fs,
         tokenizer=tokenizer,
         col_to_use="text",
-        max_len=2048,
+        max_len=data_args.max_seq_length,
         truncation=True,
+        num_samples=data_args.num_samples
     )
 
     model, _, peft_config = create_and_prepare_model(model_args)
@@ -205,4 +232,10 @@ def main(args = None):
 
 #-------------------------------------------------------------------------------
 if __name__ == "__main__":
-    main()
+    parser = HfArgumentParser(
+        (ModelArguments, DataTrainingArguments, TrainingArguments, DDPArguments)
+    )
+    model_args, data_args, training_args, ddp_args = parser.parse_args_into_dataclasses()
+    os.makedirs(data_args.local_cache_path, exist_ok=True)
+    logging.info(f"Created {data_args.local_cache_path}")
+    main(model_args, data_args, training_args, ddp_args)

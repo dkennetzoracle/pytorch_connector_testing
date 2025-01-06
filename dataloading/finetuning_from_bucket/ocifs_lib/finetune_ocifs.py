@@ -12,7 +12,7 @@ import ocifs
 from peft import get_peft_model
 
 import torch
-from torch.utils.data import IterableDataset, DistributedSampler
+from torch.utils.data import IterableDataset
 from torch.distributed import get_rank, get_world_size, is_initialized
 from torch.nn.utils.rnn import pad_sequence
 

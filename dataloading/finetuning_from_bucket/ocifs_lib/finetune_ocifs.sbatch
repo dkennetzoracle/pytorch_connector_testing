@@ -30,7 +30,7 @@ export LAUNCHER="accelerate launch \
   "
 
 export PROGRAM="\
-~/pytorch_connector_testing/dataloading/finetuning_from_bucket/ocifs/finetune_ocifs.py \
+~/pytorch_connector_testing/dataloading/finetuning_from_bucket/ocifs_lib/finetune_ocifs.py \
     --bucket_name allenai_c4_en_raw \
     --seed 100 \
     --world_size 16 \

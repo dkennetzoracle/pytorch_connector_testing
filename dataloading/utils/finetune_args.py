@@ -85,6 +85,10 @@ class DataTrainingArguments:
         }
     )
     batch_size: Optional[int] = field(default=64)
+    pre_authenticated_request: str = field(
+        default="",
+        metadata={"help": "OCI Object Storage pre-authenticated request for accessing bucket data."}
+    )
     packing: Optional[bool] = field(
         default=False,
         metadata={"help": "Use packing dataset creating."},

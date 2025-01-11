@@ -71,7 +71,7 @@ export PROGRAM="\
     --gradient_accumulation_steps 1 \
     --gradient_checkpointing True \
     --optim paged_adamw_32bit \
-    --dataloader_num_workers 1 \
+    --dataloader_num_workers 8 \
     --dataloader_persistent_workers False"
 
 export CMD="$LAUNCHER $PROGRAM"

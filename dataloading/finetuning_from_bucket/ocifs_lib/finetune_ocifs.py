@@ -103,7 +103,6 @@ class C4OciIterableDataset(IterableDataset):
         rank = get_rank() if is_initialized() else 0
         world_size = get_world_size() if is_initialized() else 1
         distributed_partition = self.file_list[rank::world_size]
-        print(f"{rank=}, {world_size=}, {distributed_partition=}")
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is None:
             return self.file_list
@@ -179,13 +178,13 @@ def main(model_args: ModelArguments,
 
     rank = get_rank()
     world_size = get_world_size()
-    print(f"Rank {rank}/{world_size} initialized successfully on node {os.environ.get('NODE_RANK', 'unknown')}.")
-    print(f"{os.environ['WORLD_SIZE']=}")
-    print(f"{os.environ['LOCAL_WORLD_SIZE']=}")
-    print(f"{os.environ['RANK']=}")
-    print(f"{os.environ['MASTER_ADDR']=}")
-    print(f"{os.environ['MASTER_PORT']=}")
-    print(f"{os.environ['LOCAL_RANK']=}")
+    logger.info(f"Rank {rank}/{world_size} initialized successfully.")
+    logger.info(f"{os.environ['WORLD_SIZE']=}")
+    logger.info(f"{os.environ['LOCAL_WORLD_SIZE']=}")
+    logger.info(f"{os.environ['RANK']=}")
+    logger.info(f"{os.environ['MASTER_ADDR']=}")
+    logger.info(f"{os.environ['MASTER_PORT']=}")
+    logger.info(f"{os.environ['LOCAL_RANK']=}")
     set_seed(training_args.seed)
     #set_seed(training_args.seed)
 

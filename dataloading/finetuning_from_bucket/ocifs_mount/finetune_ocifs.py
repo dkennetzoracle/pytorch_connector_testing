@@ -1,4 +1,5 @@
 from glob import glob
+import json
 import logging
 import os
 import sys
@@ -19,7 +20,7 @@ from torch.nn.utils.rnn import pad_sequence
 from transformers import HfArgumentParser, TrainingArguments, AutoTokenizer, Trainer
 from transformers import set_seed
 
-from datasets import load_dataset
+import fsspec
 
 # Local imports
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
@@ -42,24 +43,30 @@ class C4IterableDataset(IterableDataset):
         self.tokenizer = tokenizer
     
     def __iter__(self):
-        dataset = load_dataset('json', data_files={'train': self.datafiles}, streaming=True)
-        dataset_iter = iter(dataset['train'])
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is not None:
+            num_workers = worker_info.num_workers
+            worker_id = worker_info.id
+            self.datafiles = self.datafiles[worker_id::num_workers]
         count = 0
-        for sample in dataset_iter:
-            if count >= self.num_samples:
-                break
-            tokenized_samples = self.tokenizer(
-                sample['text'],
-                truncation = True,
-                padding='max_length',
-                max_length=2048,
-                return_tensors="pt"
-            )
-            yield {
-                "input_ids": tokenized_samples["input_ids"].squeeze(0),
-                "attention_mask": tokenized_samples["attention_mask"].squeeze(0)
-            }
-            count += 1
+        for file in self.datafiles:
+            with fsspec.open(file, mode='rt', compression='gzip') as f:
+                for line in f:
+                    if count >= self.num_samples:
+                        return
+                    sample = json.loads(line)
+                    tokenized_samples = self.tokenizer(
+                        sample['text'],
+                        truncation=True,
+                        padding='max_length',
+                        max_length=2048,
+                        return_tensors="pt",
+                    )
+                    yield {
+                        "input_ids": tokenized_samples["input_ids"].squeeze(0),
+                        "attention_mask": tokenized_samples["attention_mask"].squeeze(0),
+                    }
+                    count += 1
 
     def __len__(self):
         return self.num_samples

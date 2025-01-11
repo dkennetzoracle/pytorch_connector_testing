@@ -30,6 +30,7 @@ def plot_nvidia_smi_data(csv, output_file):
     else:
         df = pd.read_csv(StringIO(csv), delimiter=", ", engine="python")
 
+    df = df[100:]
     # Handle all unfriendliness from nvidia-smi.
     df['timestamp'] = df['timestamp'].astype(str)
     df['timestamp'] = df['timestamp'].str.strip()
@@ -38,8 +39,30 @@ def plot_nvidia_smi_data(csv, output_file):
     df['power.draw [W]'] = df['power.draw [W]'].str.replace(' W', '').astype(float)
     df['power.limit [W]'] = df['power.limit [W]'].str.replace(' W', '').astype(float)
     df['memory.used [MiB]'] = df['memory.used [MiB]'].str.replace(' MiB', '').astype(int)
+    df['memory.total [MiB]'] = df['memory.total [MiB]'].str.replace(' MiB', '').astype(int)
+    df['memory_usage_percent'] = (df['memory.used [MiB]'] / df['memory.total [MiB]']) * 100
     df['utilization.gpu [%]'] = df['utilization.gpu [%]'].str.replace(' %', '').astype(int)
+    df['utilization.memory [%]'] = df['utilization.memory [%]'].str.replace(' %', '').astype(int)
     df['power_usage_percent'] = (df['power.draw [W]'] / df['power.limit [W]']) * 100
+
+    median_power_draw = df['power.draw [W]'].median()
+    median_clocks = df['clocks.current.sm [MHz]'].median()
+    median_gpu_utilization = df['utilization.gpu [%]'].median()
+    median_memory_utilization = df['utilization.memory [%]'].median()
+    median_memory_used = df['memory_usage_percent'].median()
+    mean_power_draw = df['power.draw [W]'].mean()
+    mean_clocks = df['clocks.current.sm [MHz]'].mean()
+    mean_gpu_utilization = df['utilization.gpu [%]'].mean()
+    mean_memory_utilization = df['utilization.memory [%]'].mean()
+    mean_memory_used = df['memory_usage_percent'].mean()
+    print("")
+    print(f"{median_power_draw=}, {mean_power_draw=}")
+    print(f"{median_clocks=}, {mean_clocks=}")
+    print(f"{median_gpu_utilization=}, {mean_gpu_utilization=}")
+    print(f"{median_memory_utilization=}, {mean_memory_utilization=}")
+    print(f"{median_memory_used=}, {mean_memory_used=}")
+    print("")
+    sys.exit()
 
     # Get the unique GPU indices
     gpu_indices = df['index'].unique()   

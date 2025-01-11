@@ -29,9 +29,10 @@ export LAUNCHER="accelerate launch \
   --num_machines $NNODES \
   "
 
+# allenai_c4_en_raw
 export PROGRAM="\
 ~/pytorch_connector_testing/dataloading/finetuning_from_bucket/ocifs_lib/finetune_ocifs.py \
-    --bucket_name allenai_c4_en_raw \
+    --bucket_name allenai_c4_raw_optimized \
     --seed 100 \
     --world_size 16 \
     --local_world_size 8 \
@@ -64,7 +65,7 @@ export PROGRAM="\
     --weight_decay 0.01 \
     --warmup_ratio 0.03 \
     --max_grad_norm 1.0 \
-    --output_dir /nfs/cluster/finetune_ocifs \
+    --output_dir /nfs/cluster/finetune_ocifs_sharded \
     --max_steps 3250 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 1 \

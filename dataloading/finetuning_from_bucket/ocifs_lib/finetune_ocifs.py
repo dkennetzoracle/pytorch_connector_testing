@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import sys
+import time
 from typing import List
 
 import oci
@@ -24,10 +25,14 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")
 sys.path.append(project_root)
 
 from utils.finetune_args import ModelArguments, DataTrainingArguments, DDPArguments
-from utils.finetune_utils import create_and_prepare_model
+from utils.finetune_utils import create_and_prepare_model, ProfilerCallback
 
 #-------------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger('ocifs')
 logger.setLevel(logging.INFO)
 
@@ -125,8 +130,11 @@ class C4OciIterableDataset(IterableDataset):
                 truncation=self.truncation,
                 num_files=len(self.file_list)
             )
-            for sample in reader:
+            for idx, sample in enumerate(reader):
                 # Tokenize the current sample and return tensors
+                sample_len = len(sample["text"])
+                url_len = len(sample["url"])
+                timestamp_len = len(sample["timestamp"])
                 tokenized_sample = self.tokenizer(
                     sample[self.col_to_use],
                     truncation=self.truncation,
@@ -134,10 +142,14 @@ class C4OciIterableDataset(IterableDataset):
                     max_length=self.max_len,
                     return_tensors="pt",  # Ensure PyTorch tensors are returned
                 )
+                input_ids = tokenized_sample["input_ids"].squeeze(0)
+                attention_mask = tokenized_sample["attention_mask"].squeeze(0)
+                rank = get_rank()
+                logger.info(f"Sample: {idx}, rank: {rank}, sample_length: {sample_len}, url_length: {url_len}, timestamp_len: {timestamp_len}, type: {input_ids.dtype}, shape: {input_ids.shape[0]}")
                 # tokenized_sample is a dict with tensors. Yield as-is.
                 yield {
-                    "input_ids": tokenized_sample["input_ids"].squeeze(0),
-                    "attention_mask": tokenized_sample["attention_mask"].squeeze(0),
+                    "input_ids": input_ids,
+                    "attention_mask": attention_mask,
                 }
 
     #---------------------------------------------------------------------------                                
@@ -176,6 +188,11 @@ def main(model_args: ModelArguments,
         print("Distributed process not initialized.")
         return
 
+    if model_args.profile:
+        logger.info(f"{model_args=}")
+        logger.info(f"{data_args=}")
+        logger.info(f"{ddp_args=}")
+        logger.info(f"{training_args=}")
     rank = get_rank()
     world_size = get_world_size()
     logger.info(f"Rank {rank}/{world_size} initialized successfully.")
@@ -186,7 +203,6 @@ def main(model_args: ModelArguments,
     logger.info(f"{os.environ['MASTER_PORT']=}")
     logger.info(f"{os.environ['LOCAL_RANK']=}")
     set_seed(training_args.seed)
-    #set_seed(training_args.seed)
 
     config = oci.config.from_file(file_location=data_args.oci_config_path,
                                   profile_name=data_args.oci_profile)
@@ -224,9 +240,23 @@ def main(model_args: ModelArguments,
         args=training_args,
         data_collator=collate_fn
     )
-
-    trainer.train()
-    trainer.save_model(training_args.output_dir)
+    start = time.perf_counter()
+    if model_args.profile:
+        logger.info("Running profiler.")
+        with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CUDA],
+                                                schedule=torch.profiler.schedule(skip_first=3,
+                                                                                wait=1,
+                                                                                warmup=1,
+                                                                                active=2,
+                                                                                repeat=1),
+                                                on_trace_ready=torch.profiler.tensorboard_trace_handler('hf-training-trainer'),
+                                                profile_memory=True) as prof:
+            trainer.add_callback(ProfilerCallback(prof=prof))
+            trainer.train()
+    else:
+        trainer.train()
+        trainer.save_model(training_args.output_dir)
+    logger.info(f'Training time: {(time.perf_counter() - start):.1f}s')
 
 
 #-------------------------------------------------------------------------------

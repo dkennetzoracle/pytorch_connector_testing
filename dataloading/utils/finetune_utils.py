@@ -5,6 +5,7 @@ import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    TrainerCallback
 )
 
 
@@ -28,3 +29,10 @@ def create_and_prepare_model(model_args) -> Tuple[AutoModelForCausalLM, AutoToke
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_path)
     tokenizer.pad_token = tokenizer.eos_token
     return model, tokenizer, peft_config
+
+class ProfilerCallback(TrainerCallback):
+    def __init__(self, prof):
+        self.prof = prof
+    
+    def on_step_end(self, args, state, control, **kwargs):
+        self.prof.step()

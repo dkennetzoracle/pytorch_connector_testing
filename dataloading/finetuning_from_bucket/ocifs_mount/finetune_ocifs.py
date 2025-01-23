@@ -27,10 +27,14 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")
 sys.path.append(project_root)
 
 from utils.finetune_args import ModelArguments, DataTrainingArguments, DDPArguments
-from utils.finetune_utils import create_and_prepare_model
+from utils.finetune_utils import create_and_prepare_model, ProfilerCallback
 
 #-------------------------------------------------------------------------------
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger('ocifs_mount')
 logger.setLevel(logging.INFO)
 
@@ -55,16 +59,23 @@ class C4IterableDataset(IterableDataset):
                     if count >= self.num_samples:
                         return
                     sample = json.loads(line)
-                    tokenized_samples = self.tokenizer(
+                    sample_len = len(sample["text"])
+                    url_len = len(sample["url"])
+                    timestamp_len = len(sample["timestamp"])
+                    tokenized_sample = self.tokenizer(
                         sample['text'],
                         truncation=True,
                         padding='max_length',
                         max_length=2048,
                         return_tensors="pt",
                     )
+                    input_ids = tokenized_sample["input_ids"].squeeze(0)
+                    attention_mask = tokenized_sample["attention_mask"].squeeze(0)
+                    rank = get_rank()
+                    logger.info(f"Sample: {count}, rank: {rank}, sample_length: {sample_len}, url_length: {url_len}, timestamp_len: {timestamp_len}, type: {input_ids.dtype}, shape: {input_ids.shape[0]}")
                     yield {
-                        "input_ids": tokenized_samples["input_ids"].squeeze(0),
-                        "attention_mask": tokenized_samples["attention_mask"].squeeze(0),
+                        "input_ids": input_ids,
+                        "attention_mask": attention_mask,
                     }
                     count += 1
 
@@ -133,8 +144,23 @@ def main(model_args: ModelArguments,
         data_collator=collate_fn
     )
 
-    trainer.train()
-    trainer.save_model(training_args.output_dir)
+    start = time.perf_counter()
+    if model_args.profile:
+        logger.info("Running profiler.")
+        with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CUDA],
+                                                schedule=torch.profiler.schedule(skip_first=3,
+                                                                                wait=1,
+                                                                                warmup=1,
+                                                                                active=2,
+                                                                                repeat=1),
+                                                on_trace_ready=torch.profiler.tensorboard_trace_handler('hf-training-trainer'),
+                                                profile_memory=True) as prof:
+            trainer.add_callback(ProfilerCallback(prof=prof))
+            trainer.train()
+    else:
+        trainer.train()
+        trainer.save_model(training_args.output_dir)
+    logger.info(f'Training time: {(time.perf_counter() - start):.1f}s')
 
 
 #-------------------------------------------------------------------------------

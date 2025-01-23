@@ -1,0 +1,79 @@
+MOSAIC:
+Per Rank Stats:
+Rank 9: {'Kernel Active Time (μs)': 48792618.153999835, 'Kernel Wait Time (μs)': 771998512.095459, 'Synchronization Overhead (μs)': 26196387.895999942}
+Rank 10: {'Kernel Active Time (μs)': 48837096.672999784, 'Kernel Wait Time (μs)': 770457440.9660645, 'Synchronization Overhead (μs)': 26324863.6040001}
+Rank 11: {'Kernel Active Time (μs)': 45735144.71900075, 'Kernel Wait Time (μs)': 746816078.5883789, 'Synchronization Overhead (μs)': 26280138.68300003}
+Rank 14: {'Kernel Active Time (μs)': 48903197.36699949, 'Kernel Wait Time (μs)': 766717612.8974609, 'Synchronization Overhead (μs)': 26284818.74900006}
+Rank 15: {'Kernel Active Time (μs)': 49365403.745998845, 'Kernel Wait Time (μs)': 766904521.4038086, 'Synchronization Overhead (μs)': 25999646.089000076}
+Rank 8: {'Kernel Active Time (μs)': 49803368.94499977, 'Kernel Wait Time (μs)': 760550006.2160645, 'Synchronization Overhead (μs)': 26067739.791}
+Rank 12: {'Kernel Active Time (μs)': 48578277.36299915, 'Kernel Wait Time (μs)': 767789367.0219727, 'Synchronization Overhead (μs)': 26212050.259999964}
+Rank 7: {'Kernel Active Time (μs)': 48363341.20300015, 'Kernel Wait Time (μs)': 765421371.6210938, 'Synchronization Overhead (μs)': 26156395.018000007}
+Rank 1: {'Kernel Active Time (μs)': 46311487.932, 'Kernel Wait Time (μs)': 758768646.6293945, 'Synchronization Overhead (μs)': 26160352.05700003}
+Rank 6: {'Kernel Active Time (μs)': 47983155.92600047, 'Kernel Wait Time (μs)': 743533782.8981934, 'Synchronization Overhead (μs)': 26163523.979999986}
+Rank 4: {'Kernel Active Time (μs)': 49341146.985000536, 'Kernel Wait Time (μs)': 763730544.2888184, 'Synchronization Overhead (μs)': 26221564.152999986}
+Rank 2: {'Kernel Active Time (μs)': 48740631.572000235, 'Kernel Wait Time (μs)': 766218956.2541504, 'Synchronization Overhead (μs)': 26184167.114000108}
+Rank 13: {'Kernel Active Time (μs)': 46198075.984999634, 'Kernel Wait Time (μs)': 768950123.7214355, 'Synchronization Overhead (μs)': 26358342.82499998}
+Rank 3: {'Kernel Active Time (μs)': 48590665.31600012, 'Kernel Wait Time (μs)': 764933225.8996582, 'Synchronization Overhead (μs)': 26186425.707000017}
+Rank 0: {'Kernel Active Time (μs)': 49586833.35699959, 'Kernel Wait Time (μs)': 733956955.3278809, 'Synchronization Overhead (μs)': 25748240.25299996}
+Rank 5: {'Kernel Active Time (μs)': 47010090.23999933, 'Kernel Wait Time (μs)': 772094657.732666, 'Synchronization Overhead (μs)': 26382807.28499997}
+
+Total Stats:
+Mosaic: {'Kernel Active Time (μs)': 772_140_535.4829977, 'Kernel Wait Time (μs)': 12_188_841_803.5625, 'Synchronization Overhead (μs)': 418_927_463.4640002}
+OCIFS:  {'Kernel Active Time (μs)': 2_069_142_553.8320026, 'Kernel Wait Time (μs)': 29_163_768_278.01001, 'Synchronization Overhead (μs)': 1_248_184_680.9850001}
+
+OCIFS:
+Per Rank Stats:
+Rank 1: {'Kernel Active Time (μs)': 129771803.41000035, 'Kernel Wait Time (μs)': 1913561868.25, 'Synchronization Overhead (μs)': 78499116.32800016}
+Rank 0: {'Kernel Active Time (μs)': 128832736.40999946, 'Kernel Wait Time (μs)': 1832522869.864502, 'Synchronization Overhead (μs)': 78091431.54400021}
+Rank 13: {'Kernel Active Time (μs)': 129529736.63799873, 'Kernel Wait Time (μs)': 1869171547.546875, 'Synchronization Overhead (μs)': 77914215.20700006}
+Rank 14: {'Kernel Active Time (μs)': 129676815.98799902, 'Kernel Wait Time (μs)': 1852809434.7077637, 'Synchronization Overhead (μs)': 77887303.60400017}
+Rank 6: {'Kernel Active Time (μs)': 129129081.3510005, 'Kernel Wait Time (μs)': 1754667263.722412, 'Synchronization Overhead (μs)': 77457328.7020001}
+Rank 3: {'Kernel Active Time (μs)': 128753520.38600151, 'Kernel Wait Time (μs)': 1878255606.5332031, 'Synchronization Overhead (μs)': 78472959.93300006}
+Rank 5: {'Kernel Active Time (μs)': 129345816.21900047, 'Kernel Wait Time (μs)': 1805072323.9804688, 'Synchronization Overhead (μs)': 78000543.25899969}
+Rank 4: {'Kernel Active Time (μs)': 129118617.36599918, 'Kernel Wait Time (μs)': 1820494056.1611328, 'Synchronization Overhead (μs)': 77878125.59599972}
+Rank 7: {'Kernel Active Time (μs)': 129931597.53800029, 'Kernel Wait Time (μs)': 1811196915.7824707, 'Synchronization Overhead (μs)': 77966318.38000017}
+Rank 2: {'Kernel Active Time (μs)': 129804602.44600043, 'Kernel Wait Time (μs)': 1819102236.4091797, 'Synchronization Overhead (μs)': 78405130.89000015}
+Rank 9: {'Kernel Active Time (μs)': 129377582.14000022, 'Kernel Wait Time (μs)': 1823238797.1540527, 'Synchronization Overhead (μs)': 78027699.61600012}
+Rank 8: {'Kernel Active Time (μs)': 129524546.32099955, 'Kernel Wait Time (μs)': 1846061707.4238281, 'Synchronization Overhead (μs)': 78296676.71799998}
+Rank 11: {'Kernel Active Time (μs)': 129116224.87699924, 'Kernel Wait Time (μs)': 1766836218.3798828, 'Synchronization Overhead (μs)': 77792831.92799993}
+Rank 15: {'Kernel Active Time (μs)': 129305437.94300108, 'Kernel Wait Time (μs)': 1825940774.493164, 'Synchronization Overhead (μs)': 78365630.1289999}
+Rank 10: {'Kernel Active Time (μs)': 128964657.49100037, 'Kernel Wait Time (μs)': 1781912275.963379, 'Synchronization Overhead (μs)': 77475262.91199978}
+Rank 12: {'Kernel Active Time (μs)': 128959777.30800211, 'Kernel Wait Time (μs)': 1762924381.6376953, 'Synchronization Overhead (μs)': 77654106.23900002}
+
+Total Stats:
+{'Kernel Active Time (μs)': 2069142553.8320026, 'Kernel Wait Time (μs)': 29163768278.01001, 'Synchronization Overhead (μs)': 1248184680.9850001}
+
+Metrics Breakdown
+  Kernel Active Time:
+  Definition: Time spent executing CUDA kernels on the GPU.
+  Interpretation:
+   - Mosaic: ~772 million μs (~772 seconds).
+   - OCIFS: ~2.07 billion μs (~2,069 seconds).
+   - Mosaic's workload involves much shorter kernel execution times compared to OCIFS, suggesting its data pipeline may be better optimized for the GPU workload.
+  Kernel Wait Time:
+  Definition: Time between a kernel being launched on the GPU and its actual execution (e.g., waiting for data or resources).
+  Interpretation:
+   - Mosaic: ~12.19 billion μs (~12,188 seconds).
+   - OCIFS: ~29.16 billion μs (~29,164 seconds).
+   - The much higher wait times suggest that OCIFS is bottlenecked, likely due to slower I/O, data processing, or synchronization delays.
+  Synchronization Overhead:
+  Definition: Time spent in explicit synchronization operations (e.g., cudaEventSynchronize), which stalls the CPU waiting for GPU tasks.
+  Interpretation:
+   - Mosaic: ~418 million μs (~418 seconds).
+   - OCIFS: ~1.25 billion μs (~1,248 seconds).
+   - OCIFS has significantly higher synchronization overhead, likely due to poorer overlap of computation and data transfer, forcing more frequent waits.
+  Understanding the Numbers
+  Mosaic Finishes 3x Faster:
+   - The time difference comes primarily from lower wait times and lower synchronization overhead. Mosaic seems to keep the GPU fed with data more effectively, reducing idle time.
+   - The kernel active times are also lower, which could indicate more efficient computation (e.g., better pre-processed or more GPU-friendly data).
+  Wait Time Dominance:
+   - The kernel wait time is by far the largest contributor to overall runtime for both systems.
+   - Mosaic reduces this significantly, possibly through better prefetching, faster data pipelines, or better overlap of I/O and computation.
+  Synchronization Overhead:
+   - Synchronization stalls could be due to poor pipeline overlap or batch sizes that aren't well-suited for the hardware, causing frequent synchronization points.
+
+Next steps:
+- identify flow rate (samples / sec) transferred to app
+- identify GB/s data rate
+- avg time between samples
+

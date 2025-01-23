@@ -71,6 +71,12 @@ class ModelArguments:
             "help": "Log file to write output to."
         }
     )
+    profile: Optional[bool] = field(
+        default=False,
+        metadata={
+            "help": "Profile the training. Only runs on a few steps."
+        }
+    )
 
 @dataclass
 class DataTrainingArguments:

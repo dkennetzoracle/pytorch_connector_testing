@@ -23,7 +23,7 @@ MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 MASTER_PORT=6000
 
 export LAUNCHER="accelerate launch \
-  --config_file fsdp_config.yaml \
+  --config_file ~/pytorch_connector_testing/fsdp_config.yaml \
   --main_process_ip $MASTER_ADDR \
   --main_process_port $MASTER_PORT \
   --machine_rank \$SLURM_PROCID \
@@ -34,7 +34,7 @@ export LAUNCHER="accelerate launch \
 export PROGRAM="\
 ~/pytorch_connector_testing/dataloading/finetuning_from_bucket/webdataset_streaming/finetune_webdataset.py \
     --bucket_name wds_hub_allenaic4en \
-    --pre_authenticated_request https://objectstorage.us-ashburn-1.oraclecloud.com/p/fwGBLrEs8TGnudnr0C_T3ZkhjC6Zkc4TTDCAJFz4DOZ_nDU1yGDl338AzSENndBJ/n/iduyx1qnmway/b/wds_hub_allenaic4en/o/ \
+    --pre_authenticated_request https://objectstorage.us-ashburn-1.oraclecloud.com/p/klAZYNtcWyMEjBekvim_gmxVlhc6CKMeOws53IAXxokK-c29XbI6W4-Du7edcr_L/n/iduyx1qnmway/b/wds_hub_allenaic4en/o/ \
     --seed 100 \
     --world_size 16 \
     --local_world_size 8 \
@@ -68,7 +68,8 @@ export PROGRAM="\
     --warmup_ratio 0.03 \
     --max_grad_norm 1.0 \
     --output_dir /nfs/cluster/finetune_webdataset \
-    --max_steps 3250 \
+    --profile True \
+    --max_steps 10 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 1 \

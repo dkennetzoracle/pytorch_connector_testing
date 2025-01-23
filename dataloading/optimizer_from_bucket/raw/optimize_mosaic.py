@@ -2,7 +2,6 @@ import argparse
 import gzip
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 import sys
 import os
@@ -151,7 +150,7 @@ def main():
     for file_name in file_names:
         process_file(source_bucket, target_mosaic, file_name,
                      object_storage, namespace, writer)
-
+    writer.finish()
     end_time = datetime.now()
     logger.info(f"END TIME: {end_time.strftime('%A, %d %B, %Y, %H:%M:%S')}")
     logger.info(f"Total Duration: {end_time - start_time}")

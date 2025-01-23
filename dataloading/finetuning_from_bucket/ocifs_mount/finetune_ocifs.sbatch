@@ -21,7 +21,7 @@ MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 MASTER_PORT=6000
 
 export LAUNCHER="accelerate launch \
-  --config_file fsdp_config.yaml \
+  --config_file ~/pytorch_connector_testing/fsdp_config.yaml \
   --main_process_ip $MASTER_ADDR \
   --main_process_port $MASTER_PORT \
   --machine_rank \$SLURM_PROCID \
@@ -65,7 +65,8 @@ export PROGRAM="\
     --warmup_ratio 0.03 \
     --max_grad_norm 1.0 \
     --output_dir /nfs/cluster/finetune_ocifs \
-    --max_steps 3250 \
+    --profile False \
+    --max_steps 250 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 1 \

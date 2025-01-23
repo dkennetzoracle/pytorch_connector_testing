@@ -6,3 +6,4 @@ fsdp_config.yaml
 *.err
 *.csv
 *.png
+*hf-training-trainer*

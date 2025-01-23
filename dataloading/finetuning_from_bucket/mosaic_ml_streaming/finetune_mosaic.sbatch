@@ -23,13 +23,17 @@ MASTER_ADDR=$(scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1)
 MASTER_PORT=6000
 
 export LAUNCHER="accelerate launch \
-  --config_file fsdp_config.yaml \
+  --config_file ~/pytorch_connector_testing/fsdp_config.yaml \
   --main_process_ip $MASTER_ADDR \
   --main_process_port $MASTER_PORT \
   --machine_rank \$SLURM_PROCID \
   --num_processes $NUM_PROCS \
   --num_machines $NNODES \
   "
+
+if [ -d /nfs/cluster/dataset_cache ]; then
+  rm -rf /nfs/cluster/dataset_cache
+fi
 
 export PROGRAM="\
 ~/pytorch_connector_testing/dataloading/finetuning_from_bucket/mosaic_ml_streaming/finetune_mosaic.py \
@@ -53,7 +57,7 @@ export PROGRAM="\
     --splits train \
     --oci_config_path ~/.oci/config \
     --oci_profile DEFAULT \
-    --local_cache_max_size_gbs 25gb \
+    --local_cache_max_size_gbs 100gb \
     --logging_steps 25 \
     --log_level "info" \
     --eval_steps 100 \
@@ -64,16 +68,18 @@ export PROGRAM="\
     --learning_rate 5e-5 \
     --lr_scheduler_type "cosine" \
     --weight_decay 0.01 \
+    --profile False \
     --warmup_ratio 0.03 \
     --max_grad_norm 1.0 \
     --output_dir /nfs/cluster/finetune_mosaic_ml \
-    --max_steps 3250 \
+    --max_steps 250 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 1 \
     --gradient_checkpointing True \
     --optim paged_adamw_32bit \
     --dataloader_num_workers 8 \
+    --dataloader_pin_memory True \
     --dataloader_persistent_workers False"
 
 export CMD="$LAUNCHER $PROGRAM"

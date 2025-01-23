@@ -1,8 +1,10 @@
 import logging
 import os
 import sys
+import time
 from typing import Optional, Any
 
+import torch
 from torch.distributed import get_rank, get_world_size, is_initialized
 from torch.nn.utils.rnn import pad_sequence
 
@@ -21,10 +23,14 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")
 sys.path.append(project_root)
 
 from utils.finetune_args import ModelArguments, DataTrainingArguments, DDPArguments
-from utils.finetune_utils import create_and_prepare_model
+from utils.finetune_utils import create_and_prepare_model, ProfilerCallback
 
 #-------------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger('streaming')
 logger.setLevel(logging.INFO)
 
@@ -48,7 +54,8 @@ class MosaicMLTrainer(Trainer):
             "persistent_workers": self.args.dataloader_persistent_workers,
         }
 
-        return self.accelerator.prepare(StreamingDataLoader(train_dataset, **dataloader_params))
+        #return self.accelerator.prepare(StreamingDataLoader(train_dataset, **dataloader_params))
+        return StreamingDataLoader(train_dataset, **dataloader_params)
 
 
     #---------------------------------------------------------------------------
@@ -124,10 +131,15 @@ class StreamingC4Dataset(StreamingDataset):
     def get_item(self, idx: int) -> Any:
         """ Get sample by global index, blocking to load its shard if missing."""
         text_sample = super().get_item(idx)
+        sample_len = len(text_sample["text"])
+        url_len = len(text_sample["url"])
+        timestamp_len = len(text_sample["timestamp"])
         tokenized_sample = self._tokenize(text_sample)
         input_ids = tokenized_sample["input_ids"].squeeze(0)
         attention_mask = tokenized_sample["attention_mask"].squeeze(0)
         # Might need a "labels" here.
+        rank = get_rank()
+        logger.info(f"Sample: {idx}, rank: {rank}, sample_length: {sample_len}, url_length: {url_len}, timestamp_len: {timestamp_len}, type: {input_ids.dtype}, shape: {input_ids.shape[0]}")
         return {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
@@ -158,16 +170,21 @@ def main(model_args, data_args, training_args, ddp_args):
         print("Distributed process not initialized.")
         return
 
+    if model_args.profile:
+        logger.info(f"{model_args=}")
+        logger.info(f"{data_args=}")
+        logger.info(f"{ddp_args=}")
+        logger.info(f"{training_args=}")
     assert isinstance(training_args.gradient_accumulation_steps, int), "Invalid gradient_accumulation_steps"
     rank = get_rank()
     world_size = get_world_size()
-    print(f"Rank {rank}/{world_size} initialized successfully on node {os.environ.get('NODE_RANK', 'unknown')}.")
-    print(f"{os.environ['WORLD_SIZE']=}")
-    print(f"{os.environ['LOCAL_WORLD_SIZE']=}")
-    print(f"{os.environ['RANK']=}")
-    print(f"{os.environ['MASTER_ADDR']=}")
-    print(f"{os.environ['MASTER_PORT']=}")
-    print(f"{os.environ['LOCAL_RANK']=}")
+    logger.info(f"Rank {rank}/{world_size} initialized successfully.")
+    logger.info(f"{os.environ['WORLD_SIZE']=}")
+    logger.info(f"{os.environ['LOCAL_WORLD_SIZE']=}")
+    logger.info(f"{os.environ['RANK']=}")
+    logger.info(f"{os.environ['MASTER_ADDR']=}")
+    logger.info(f"{os.environ['MASTER_PORT']=}")
+    logger.info(f"{os.environ['LOCAL_RANK']=}")
     set_seed(training_args.seed)
     config = oci.config.from_file(file_location=data_args.oci_config_path,
                                   profile_name=data_args.oci_profile)
@@ -204,15 +221,28 @@ def main(model_args, data_args, training_args, ddp_args):
         }
 
     trainer = MosaicMLTrainer(
-        streaming_batch_size=data_args.batch_size,
         model=model,
         train_dataset=dataset,
         args=training_args,
         data_collator=collate_fn
     )
-
-    trainer.train()
-    trainer.save_model(training_args.output_dir)
+    start = time.perf_counter()
+    if model_args.profile:
+        logger.info("Running profiler.")
+        with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CUDA],
+                                                schedule=torch.profiler.schedule(skip_first=3,
+                                                                                wait=1,
+                                                                                warmup=1,
+                                                                                active=2,
+                                                                                repeat=1),
+                                                on_trace_ready=torch.profiler.tensorboard_trace_handler('hf-training-trainer'),
+                                                profile_memory=True) as prof:
+            trainer.add_callback(ProfilerCallback(prof=prof))
+            trainer.train()
+    else:
+        trainer.train()
+        trainer.save_model(training_args.output_dir)
+    logger.info(f'Training time: {(time.perf_counter() - start):.1f}s')
 
 
 #-------------------------------------------------------------------------------

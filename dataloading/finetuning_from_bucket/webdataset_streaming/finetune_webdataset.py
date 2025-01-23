@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+import time
 from typing import List
 
 import oci
@@ -8,6 +9,7 @@ from oci.object_storage import ObjectStorageClient
 
 from peft import get_peft_model
 
+import torch
 from torch.distributed import get_rank, get_world_size, is_initialized
 from torch.nn.utils.rnn import pad_sequence
 
@@ -22,10 +24,14 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")
 sys.path.append(project_root)
 
 from utils.finetune_args import ModelArguments, DataTrainingArguments, DDPArguments
-from utils.finetune_utils import create_and_prepare_model
+from utils.finetune_utils import create_and_prepare_model, ProfilerCallback
 
 #-------------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 logger = logging.getLogger('streaming')
 logger.setLevel(logging.INFO)
 
@@ -52,7 +58,7 @@ class WebDatasetTrainer(Trainer):
                                 batch_size=None,
                                 num_workers=self.args.dataloader_num_workers)
         trainloader = trainloader.unbatched().shuffle(self.args.seed).batched(self._train_batch_size)
-        return self.accelerator.prepare(WebLoader(train_dataset, **dataloader_params))
+        return WebLoader(train_dataset, **dataloader_params)
     
     #---------------------------------------------------------------------------
     def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
@@ -99,9 +105,14 @@ class TokenizeDataset:
             max_length=self.max_seq_len,
             return_tensors="pt",
         )
+        sample_len = len(sample["text"])
+        rank = get_rank()
+        input_ids = tokenized_sample["input_ids"].squeeze(0)
+        attention_mask = tokenized_sample["attention_mask"].squeeze(0)
+        logger.info(f"Sample: 0, rank: {rank}, sample_length: {sample_len}, url_length: 30, timestamp_len: 19, type: {input_ids.dtype}, shape: {input_ids.shape[0]}")
         return {
-            "input_ids": tokenized_sample["input_ids"].squeeze(0),
-            "attention_mask": tokenized_sample["attention_mask"].squeeze(0),
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
         }
 
 #-------------------------------------------------------------------------------
@@ -186,8 +197,23 @@ def main(model_args: ModelArguments,
         args=training_args,
         data_collator=collate_fn
     )
-    trainer.train()
-    trainer.save_model(training_args.output_dir)
+    start = time.perf_counter()
+    if model_args.profile:
+        logger.info("Running profiler.")
+        with torch.profiler.profile(activities=[torch.profiler.ProfilerActivity.CUDA],
+                                                schedule=torch.profiler.schedule(skip_first=3,
+                                                                                wait=1,
+                                                                                warmup=1,
+                                                                                active=2,
+                                                                                repeat=1),
+                                                on_trace_ready=torch.profiler.tensorboard_trace_handler('hf-training-trainer'),
+                                                profile_memory=True) as prof:
+            trainer.add_callback(ProfilerCallback(prof=prof))
+            trainer.train()
+    else:
+        trainer.train()
+        trainer.save_model(training_args.output_dir)
+    logger.info(f'Training time: {(time.perf_counter() - start):.1f}s')
 
 if __name__ == "__main__":
     parser = HfArgumentParser(
